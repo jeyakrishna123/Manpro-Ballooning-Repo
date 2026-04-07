@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# .NET build output
+bin/
+obj/
+
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# IDE files
+.vs/
+*.suo
+*.user
+*.vsidx
+.idea/
+
+# Build artifacts
+build/
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp files
+nul
+=4.8.0
+
+# IIS config
+.vs/
+
+# Cache files
+*.dtbcache*
+*.futdcache*
+
+# Claude settings
+.claude/

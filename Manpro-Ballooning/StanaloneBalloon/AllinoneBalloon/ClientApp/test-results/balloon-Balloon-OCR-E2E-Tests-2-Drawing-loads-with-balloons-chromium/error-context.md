@@ -1,0 +1,182 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e6]:
+    - generic [ref=e7]:
+      - link "Bubble Drawing Automation" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Bubble Drawing Automation" [ref=e13]
+      - list [ref=e20]:
+        - listitem [ref=e21]:
+          - generic [ref=e23]:
+            - generic [ref=e24]: Drawing No
+            - textbox "Drawing No" [active] [ref=e25]:
+              - /placeholder: ""
+        - listitem [ref=e26]:
+          - generic [ref=e28]:
+            - generic [ref=e29]: Rev No
+            - textbox "Rev No" [ref=e30]:
+              - /placeholder: ""
+        - listitem [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e33]: Search (or) Upload
+            - generic [ref=e34]:
+              - button "Search" [ref=e36] [cursor=pointer]:
+                - img "Search" [ref=e37]
+              - generic [ref=e38]:
+                - paragraph [ref=e40] [cursor=pointer]: Choose a file
+                - button "Choose a file" [ref=e41] [cursor=pointer]
+        - listitem [ref=e42]:
+          - generic [ref=e44]:
+            - button [disabled]:
+              - img
+        - listitem [ref=e45]:
+          - button "Save" [disabled]: Save
+      - generic:
+        - generic: 
+      - navigation
+      - navigation [ref=e46]:
+        - button " Admin" [ref=e49] [cursor=pointer]:
+          - generic [ref=e50]: 
+          - text: Admin
+  - generic [ref=e51]:
+    - generic [ref=e52]:
+      - list [ref=e54]:
+        - text: 
+        - listitem [ref=e55] [cursor=pointer]:
+          - list [ref=e57]:
+            - list [ref=e58]:
+              - listitem [ref=e59]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "Process" [level=2] [ref=e60]
+              - listitem [ref=e61]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "Selected" [level=2] [ref=e62]
+              - listitem [ref=e63]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "Unselected" [level=2] [ref=e64]
+              - listitem [ref=e65]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "SPL" [level=2] [ref=e66]
+              - listitem [ref=e67]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "Reset" [level=2] [ref=e68]
+            - list [ref=e69]:
+              - listitem [ref=e70]:
+                - button "Show Table " [ref=e71]:
+                  - generic [ref=e72]: Show Table
+                  - generic [ref=e74]: 
+                - heading "Table" [level=2] [ref=e75]
+              - listitem [ref=e76]:
+                - button "Identify All " [ref=e77]:
+                  - generic [ref=e78]: Identify All
+                  - generic [ref=e80]: 
+                - heading "Identify" [level=2] [ref=e81]
+              - listitem [ref=e82]:
+                - button "" [ref=e83]:
+                  - generic [ref=e85]: 
+                - heading "Watermark" [level=2] [ref=e86]
+              - listitem [ref=e87]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "Screen Size" [level=2] [ref=e88]
+              - listitem [ref=e89]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "Fit Screen" [level=2] [ref=e90]
+              - listitem [ref=e91]:
+                - button "image / 34 - image, rotate, left, flip, rotation, arrow icon" [disabled]:
+                  - generic:
+                    - img "image / 34 - image, rotate, left, flip, rotation, arrow icon"
+                - heading "Rotate Left" [level=2] [ref=e92]
+              - listitem [ref=e93]:
+                - button "image / 35 - image, rotate, right, flip, rotation, arrow icon" [disabled]:
+                  - generic:
+                    - img "image / 35 - image, rotate, right, flip, rotation, arrow icon"
+                - heading "Rotate Right" [level=2] [ref=e94]
+              - listitem [ref=e95]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "Zoom In" [level=2] [ref=e96]
+              - listitem [ref=e97]:
+                - button [disabled]:
+                  - generic:
+                    - img
+                - heading "Zoom Out" [level=2] [ref=e98]
+      - generic [ref=e103]:
+        - heading "Settings" [level=1] [ref=e104]
+        - generic [ref=e107] [cursor=pointer]: "Balloon Color :"
+        - generic [ref=e114] [cursor=pointer]: "Failed Color :"
+        - generic [ref=e121] [cursor=pointer]: "Passed Color:"
+        - generic [ref=e126]:
+          - generic [ref=e128] [cursor=pointer]: "Balloon Shape :"
+          - combobox [ref=e130]:
+            - option "Circle"
+            - option "Ring"
+            - option "Star"
+            - option "Triangle"
+            - option "Square"
+            - option "Diamond"
+            - option "Pentagon"
+            - option "Hexagon"
+            - option "Octagon" [selected]
+            - option "Wedge"
+            - option "Tooltip-Down"
+            - option "Tooltip-UP"
+            - option "Tooltip-Left"
+            - option "Tooltip-Right"
+            - text: ;
+        - generic [ref=e131]:
+          - generic [ref=e133] [cursor=pointer]: "Balloon Mode :"
+          - combobox [ref=e135]:
+            - option "Light" [selected]
+            - option "Dark"
+        - heading "Tolerance" [level=1] [ref=e136]
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - generic [ref=e140] [cursor=pointer]: .x =
+            - textbox ".x" [ref=e141] [cursor=pointer]: "0.5"
+          - generic [ref=e142]:
+            - generic [ref=e144] [cursor=pointer]: .xx =
+            - textbox ".xx" [ref=e145] [cursor=pointer]: "0.5"
+          - generic [ref=e146]:
+            - generic [ref=e148] [cursor=pointer]: .xxx =
+            - textbox ".xxx" [ref=e149] [cursor=pointer]: "0.5"
+          - generic [ref=e150]:
+            - generic [ref=e152] [cursor=pointer]: .xxxx =
+            - textbox ".xxxx" [ref=e153] [cursor=pointer]: "0.5"
+          - generic [ref=e154]:
+            - generic [ref=e156] [cursor=pointer]: Angles =
+            - textbox "Angles" [ref=e157] [cursor=pointer]: 1/2
+        - generic [ref=e158]:
+          - heading "Other Settings" [level=1] [ref=e159]
+          - separator
+          - generic [ref=e160]:
+            - checkbox "Convert Inches To MM" [ref=e161]
+            - generic [ref=e162]: Convert Inches To MM
+          - generic [ref=e163]:
+            - checkbox "Accurate GD&T Extraction" [ref=e164]
+            - generic [ref=e165]: Accurate GD&T Extraction
+        - generic [ref=e167]:
+          - generic [ref=e168]: Watermark
+          - generic [ref=e170]: "OFF"
+    - button "Main menu" [ref=e174] [cursor=pointer]:
+      - generic [ref=e175]: 
+  - main [ref=e178]:
+    - generic "Open table panel" [ref=e185] [cursor=pointer]:
+      - generic [ref=e186]: 
+```

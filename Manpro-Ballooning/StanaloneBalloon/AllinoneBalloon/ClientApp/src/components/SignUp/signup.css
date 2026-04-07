@@ -1,0 +1,57 @@
+﻿.login-page {
+    margin-left: inherit !important;
+    width:100% !important;
+}
+ 
+.loaderPOS {
+    position: relative;
+    left: 35%;
+}
+.gradient-custom-2 {
+    /* fallback for old browsers */
+    background: #fccb90;
+    /* Chrome 10-25, Safari 5.1-6 */
+    background: -webkit-linear-gradient(to right, #ee7724, #d8363a, #dd3675, #b44593);
+    /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+    background: linear-gradient(to right, #ee7724, #d8363a, #dd3675, #b44593);
+}
+.gradient-custom-1 {
+    /* fallback for old browsers */
+    background: #EFFAFA;
+    /* Chrome 10-25, Safari 5.1-6 */
+    background: -webkit-linear-gradient(to right, #5ce0e5, #5ce0e5, #0071be, #0071be);
+    /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+    background: linear-gradient(to right, #5ce0e5, #5ce0e5, #0071be, #0071be);
+}
+
+@media (min-width: 768px) {
+    .gradient-form {
+        height: 100vh !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .gradient-custom-2, .gradient-custom-1 {
+        border-top-right-radius: .3rem;
+        border-bottom-right-radius: .3rem;
+    }
+
+}
+.css-tmvzag {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    background: rgb(255, 255, 255);
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+.loginform .submit {
+    background-color: #003e62;
+    color: #fff;
+    font-size: .85rem;
+    text-transform: capitalize;
+} 
+.loginform .input-group-text {
+    background-color: #003e62;
+    color: #fff;
+} 

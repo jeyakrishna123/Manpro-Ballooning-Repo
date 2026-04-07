@@ -1,0 +1,21 @@
+{
+  "dependencies": {
+    "secrets1": {
+      "type": "secrets"
+    },
+    "mssql1": {
+      "ignored": "true",
+      "type": "mssql",
+      "connectionId": "AppSettings:MPMConnStr"
+    },
+    "mssql2": {
+      "ignored": "true",
+      "type": "mssql",
+      "connectionId": "ConnectionStrings:demo"
+    },
+    "signalr1": {
+      "ignored": "true",
+      "type": "signalr"
+    }
+  }
+}

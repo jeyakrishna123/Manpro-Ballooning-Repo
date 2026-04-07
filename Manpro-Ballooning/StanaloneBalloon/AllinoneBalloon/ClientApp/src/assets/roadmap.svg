@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg  width="800px" height="800px" viewBox="0 0 24 24" class="roadmap"  xmlns="http://www.w3.org/2000/svg" >
+<line class="secondary" x1="12" y1="7" x2="12" y2="17" ></line>
+<polyline class="secondary"  points="19 17 19 12 5 12 5 17" ></polyline>
+<path class="primary" d="M15,7H9V3h6Zm6,14V17H17v4ZM7,21V17H3v4Zm7,0V17H10v4Z"  ></path></svg>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>image / 35 - image, rotate, right, flip, rotation, arrow icon</title>
+      <defs>
+    <linearGradient id="fitImg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:rgb(255, 255, 255);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgb(255, 255, 255);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+    <g id="Free-Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g transform="translate(-303.000000, -600.000000)" id="Group">
+            <g transform="translate(301.000000, 598.000000)" id="Shape">
+                <path d="M18.5873841,12.5 L9.30166985,12.5 C8.27599817,12.5 7.44452699,13.3456844 7.44452699,14.3888889 L7.44452699,19.1111111 C7.44452699,20.1543156 8.27599817,21 9.30166985,21 L18.5873841,21 C19.6130558,21 20.444527,20.1543156 20.444527,19.1111111 L20.444527,14.3888889 C20.444527,13.3456844 19.6130558,12.5 18.5873841,12.5 Z" fill="url(#fitImg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+</path>
+                <path d="M14.9745259,2.6520017 L18.9745259,5.1520017 C19.601194,5.54366925 19.601194,6.45633075 18.9745259,6.8479983 L14.9745259,9.3479983 C14.3084779,9.76427831 13.444527,9.28543554 13.444527,8.5 L13.444527,3.5 C13.444527,2.71456446 14.3084779,2.23572169 14.9745259,2.6520017 Z" fill="url(#fitImg)" fill-rule="nonzero">
+
+</path>
+                <path d="M14.444527,6 L11,6 C6.581722,6 3,9.581722 3,14 L3,16 L3,16" stroke="url(#fitImg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+</path>
+            </g>
+        </g>
+    </g>
+</svg>

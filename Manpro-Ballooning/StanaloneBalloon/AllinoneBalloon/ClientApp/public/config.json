@@ -1,0 +1,11 @@
+{
+  "REACT_APP_ENV": "development",
+  "REACT_APP_CONSOLE": false,
+  "REACT_APP_SERVER": "http://localhost:8082",
+  "REACT_APP_TITLE": " Auto Ballooning",
+  "REACT_APP_DEMO": false,
+  "REACT_APP_LOGO": "logo-manpro.jpg",
+  "REACT_APP_FAVICON": "favicon.ico",
+  "REACT_APP_BALLOON_PROCESS_MAX_QTY": 10
+}
+
