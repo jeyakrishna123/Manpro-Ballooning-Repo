@@ -69,7 +69,14 @@ namespace AllinoneBalloon.Middleware
                 foreach (var origin in origins.GetChildren())
                 {
                     string corsurl = origin.Value;
-                    _allowedDomains.Add(corsurl);
+                    try
+                    {
+                        _allowedDomains.Add(new Uri(corsurl).Host);
+                    }
+                    catch
+                    {
+                        _allowedDomains.Add(corsurl);
+                    }
                 }
             }
         }
