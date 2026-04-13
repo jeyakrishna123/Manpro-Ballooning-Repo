@@ -16,19 +16,22 @@ namespace AllinoneBalloon.Controllers
 
             try
             {
-                user = await helper.GetLoggedUser(HttpContext);
-                if (user != null)
-                {
-                    username = user.Name;
-                }
-                else
-                {
-                    await Task.Run(() =>
-                    {
-                        return Unauthorized("You are not authorized to access this resource.");
-                    });
-                }
                 jwtToken = await helper.GetToken(HttpContext);
+                user = await helper.GetLoggedUser(HttpContext);
+                if (user == null)
+                {
+                    var nameId = jwtToken?.Claims?.Where(c => c.Type == "unique_name" || c.Type == System.Security.Claims.ClaimTypes.Name).Select(c => c.Value).FirstOrDefault();
+                    if (!string.IsNullOrEmpty(nameId))
+                    {
+                        var userId = long.Parse(nameId);
+                        user = context.Users.Find(userId);
+                    }
+                    if (user == null)
+                    {
+                        return Unauthorized("Your session has expired. Please log out and log in again.");
+                    }
+                }
+                username = user.Name;
                 var gid = jwtToken.Claims.Where(c => c.Type == "groupId").Select(c => c.Value).FirstOrDefault();
                 bool groupExist = long.TryParse(gid, out groupId);
                 string Urole = user.Role;

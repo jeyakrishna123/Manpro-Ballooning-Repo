@@ -41,7 +41,7 @@ class Product extends React.Component {
             /* Read more about isConfirmed, isDenied below */
             if (result.isConfirmed) {
                 setTimeout(async () => {
-                    let BASE_URL = process.env.REACT_APP_SERVER;
+                    let BASE_URL = process.env.REACT_APP_SERVER || '';
                     let url = BASE_URL + "/api/fileupload/block";
                     let req = { hdrid: send };
                     let currentUser = state.user[0];
@@ -480,7 +480,7 @@ export default class ProjectCatalog extends React.Component {
         let state = useStore.getState();
         let currentUser = state.user[0];
         try {
-            let BASE_URL = process.env.REACT_APP_SERVER;
+            let BASE_URL = process.env.REACT_APP_SERVER || '';
             let url = BASE_URL + `/api/drawingsearch/getallProjects?page=${page}&search=${this.state.search}&pageSize=${this.state.pageSize}`;
             await axios.get(url, {
                 headers: {

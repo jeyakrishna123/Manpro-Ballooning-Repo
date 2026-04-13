@@ -31,7 +31,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity.Core.Objects;
 using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
+using SixLabors.ImageSharp;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -69,7 +69,7 @@ namespace AllinoneBalloon.Controllers
         string envcpath = Environment.CurrentDirectory;
         public System.Data.DataTable dtFiles_Production = new System.Data.DataTable("Production_Files");
         public System.Data.DataTable dtFiles_Header = new System.Data.DataTable("Drawing_Header");
-        protected IList<System.Drawing.Image> imageList_Crop;
+        protected IList<SixLabors.ImageSharp.Image> imageList_Crop;
         List<Circle_AutoBalloon> lstCircle = new List<Circle_AutoBalloon>();
         List<PartialImage> partial_image = new List<PartialImage>();
         string temp = string.Empty;

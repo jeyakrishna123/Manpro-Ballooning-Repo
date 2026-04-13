@@ -102,60 +102,53 @@ builder.Services.AddAutoMapper(Assembly.GetEntryAssembly());
     // configure strongly typed settings objects
     var appSettingsSection = builder.Configuration.GetSection("AppSettings");
     builder.Services.Configure<AppSettings>(appSettingsSection);
-    string env = builder.Configuration.GetSection("ENVIRONMENT").Value;
+    string env = builder.Environment.EnvironmentName; // "Development", "Production", etc.
     var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
-    StringBuilder ClientDevUrl = new StringBuilder();
-    string ClientAppUrl = string.Empty;
-    // enable specific cors
-    if (builder.Environment.IsDevelopment())
+    string ClientAppUrl = builder.Configuration.GetSection("AppSettings:ClientAppUrl").Value ?? string.Empty;
+    bool isDev = builder.Environment.IsDevelopment();
+
+    // Collect all configured CORS origins from appsettings.{Environment}.json
+    var configuredOrigins = new List<string>();
+    #pragma warning disable CS8600, CS8602, CS8604
+    foreach (var policy in corsPolicies)
     {
-        builder.Services.AddCors(c =>
+        var origins = policy.GetSection("Origins");
+        foreach (var origin in origins.GetChildren())
         {
-            #pragma warning disable CS8600, CS8602, CS8604
-            foreach (var policy in corsPolicies)
+            if (!string.IsNullOrWhiteSpace(origin.Value))
+                configuredOrigins.Add(origin.Value.TrimEnd('/'));
+        }
+    }
+    #pragma warning restore CS8600, CS8602, CS8604
+    // Include ClientAppUrl if not already in the list
+    if (!string.IsNullOrWhiteSpace(ClientAppUrl) && !configuredOrigins.Contains(ClientAppUrl.TrimEnd('/')))
+        configuredOrigins.Add(ClientAppUrl.TrimEnd('/'));
+
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy(name: MyAllowSpecificOrigins, policyBuilder =>
+        {
+            if (isDev)
             {
-                c.AddPolicy(policy.Key, options =>
+                // In development, allow all localhost origins dynamically
+                policyBuilder.SetIsOriginAllowed(origin =>
                 {
-                    var origins = policy.GetSection("Origins");
-                    foreach (var origin in origins.GetChildren())
-                    {
-                        string corsurl = origin.Value;
-                        ClientDevUrl.AppendLine(corsurl);
-                        options.WithOrigins(corsurl)
-                        .AllowAnyMethod()
-                        .AllowAnyHeader()
-                        .AllowCredentials(); // Important for SignalR
-                    }
+                    var host = new Uri(origin).Host;
+                    return host == "localhost" || host == "127.0.0.1" || configuredOrigins.Contains(origin.TrimEnd('/'));
                 });
             }
-            #pragma warning restore CS8600, CS8602, CS8604
-
-            c.AddDefaultPolicy(builder =>
+            else
             {
-                builder.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost");
-               // builder.SetIsOriginAllowed(_ => true)
-                builder.WithOrigins("http://localhost:44436")
-                .AllowAnyHeader()
+                // In production, only allow explicitly configured origins
+                policyBuilder.WithOrigins(configuredOrigins.ToArray());
+            }
+
+            policyBuilder
                 .AllowAnyMethod()
-                .AllowCredentials(); // Important for SignalR
-            });
+                .AllowAnyHeader()
+                .AllowCredentials();
         });
-    }
-    else 
-    {
-    
-     ClientAppUrl = builder.Configuration.GetSection("AppSettings:ClientAppUrl").Value;
-    builder.Services.AddCors(options =>
-        {
-            options.AddPolicy(name: MyAllowSpecificOrigins,
-                builder => builder
-                    .WithOrigins(ClientAppUrl) // Replace with your React app's Azure URL
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials()
-                    );
-        });
-    }
+    });
 // configure jwt authentication
 var appSettings = appSettingsSection.Get<AppSettings>();
     var key = Encoding.ASCII.GetBytes(appSettings.Secret);
@@ -199,7 +192,7 @@ builder.Services.AddAuthentication(options =>
             }
         };
 
-        o.RequireHttpsMetadata = false;
+        o.RequireHttpsMetadata = false; // Set to true when production has SSL/HTTPS configured
         o.SaveToken = true;
         o.TokenValidationParameters = new TokenValidationParameters
         {
@@ -208,8 +201,8 @@ builder.Services.AddAuthentication(options =>
             IssuerSigningKey = new SymmetricSecurityKey(key),
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateLifetime = false,
-            ClockSkew = TimeSpan.Zero,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2),
             ValidateIssuerSigningKey = true
         };
     });
@@ -221,39 +214,38 @@ builder.Services.AddControllers()
         .AddNewtonsoftJson(options =>
         {
             options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        })
+        .ConfigureApiBehaviorOptions(options =>
+        {
+            options.InvalidModelStateResponseFactory = context =>
+            {
+                var result = new UnprocessableEntityObjectResult(context.ModelState);
+                result.ContentTypes.Add("application/json");
+                return result;
+            };
         });
-//builder.Services.AddControllers().AddJsonOptions(x => x.JsonSerializerOptions.IgnoreNullValues = true);
-builder.Services.AddControllers()
-                .ConfigureApiBehaviorOptions(options =>
-                {
-                    options.InvalidModelStateResponseFactory = context =>
-                    {
-                        var result = new UnprocessableEntityObjectResult(context.ModelState);
-                        result.ContentTypes.Add("application/json");
-                        return result;
-                    };
-                });
         builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
         builder.Services.AddTransient<IMailService, MailService>();
 
     // OCR Services
     builder.Services.AddHttpClient<PaddleOcrService>();
     builder.Services.AddScoped<IOcrServiceFactory, OcrServiceFactory>();
+    // Auto-start PaddleOCR Python service when backend starts
+    builder.Services.AddHostedService<PaddleOcrHostedService>();
 
     builder.Services.AddEndpointsApiExplorer();
 
     // Step 1 to use session  
     builder.Services.AddDistributedMemoryCache();
+    var sessionTimeout = builder.Configuration.GetValue<int>("AppSettings:SessionTimeout", 10);
     builder.Services.AddSession(options =>
     {
-        options.IdleTimeout = TimeSpan.FromMinutes(1);
+        options.IdleTimeout = TimeSpan.FromMinutes(sessionTimeout);
         options.Cookie.Name = "bubble";
         options.Cookie.HttpOnly = true;
         options.Cookie.IsEssential = true;
+        options.Cookie.SecurePolicy = isDev ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
     });
-
-    builder.Services.AddControllers();
-    builder.Services.AddControllers().AddNewtonsoftJson();
 
     builder.Services.Configure<CookiePolicyOptions>(options =>
     {
@@ -265,10 +257,10 @@ builder.Services.AddControllers()
     });
 
     builder.Services.AddHttpContextAccessor();
-    builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
  
     builder.WebHost.ConfigureKestrel(c =>
     {
+        c.Limits.MaxRequestBodySize = 52428800; // 50 MB — matches upload validation in FileUploadController
         c.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(timespan);
         c.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(1);
     });
@@ -284,8 +276,8 @@ builder.WebHost.UseIISIntegration();
 var app = builder.Build();
     //ILogger logger = app.Logger;
     string ErrorLog = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ErrorLog");
-    string serverDrawing = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ClientApp\\src\\drawing");
-    string serverDrawingsample = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ClientApp\\src\\drawing\\sample");
+    string serverDrawing = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ClientApp", "src", "drawing");
+    string serverDrawingsample = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ClientApp", "src", "drawing", "sample");
 string WorkingDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Drawed Images");
     string SourceDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SourceDrawings");
 
@@ -312,15 +304,14 @@ if (!Directory.Exists(SourceDir))
     Directory.CreateDirectory(SourceDir);
 }
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-    {
-        app.UseExceptionHandler("/Error");
-    }
-    else
+if (app.Environment.IsDevelopment())
     {
         app.UseDeveloperExceptionPage();
     }
-    app.UseExceptionHandler("/Home/Error");
+    else
+    {
+        app.UseExceptionHandler("/Home/Error");
+    }
 
     app.Use(async (context, next) =>
     {
@@ -329,20 +320,28 @@ if (!app.Environment.IsDevelopment())
             if (context.Request.Method == "OPTIONS")
             {
                 var origin = context.Request.Headers["Origin"].ToString();
-                if (builder.Environment.IsDevelopment())
+                bool isAllowed = false;
+
+                if (!string.IsNullOrEmpty(origin))
                 {
-                    if (!string.IsNullOrEmpty(origin) && new Uri(origin).Host == "localhost")
+                    if (isDev)
                     {
-                        context.Response.Headers.Add("Access-Control-Allow-Origin", origin);
+                        var host = new Uri(origin).Host;
+                        isAllowed = host == "localhost" || host == "127.0.0.1" || configuredOrigins.Contains(origin.TrimEnd('/'));
+                    }
+                    else
+                    {
+                        isAllowed = configuredOrigins.Contains(origin.TrimEnd('/'));
                     }
                 }
-                else
+
+                if (isAllowed)
                 {
-                    context.Response.Headers.Add("Access-Control-Allow-Origin", ClientAppUrl);
+                    context.Response.Headers.Add("Access-Control-Allow-Origin", origin);
+                    context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+                    context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+                    context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
                 }
-                context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-                context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization");
-                context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
                 context.Response.StatusCode = 200;
                 return;
             }
@@ -362,29 +361,32 @@ if (!app.Environment.IsDevelopment())
             {
                 Directory.CreateDirectory(Path);
             }
-            Path = Path +"\\"+ DateTime.Today.ToString("dd-MM-yy") + ".txt";   //Text File Name
+            Path = System.IO.Path.Combine(Path, DateTime.Today.ToString("dd-MM-yy") + ".txt");   //Text File Name
             if (!File.Exists(Path))
             {
                 File.Create(Path).Dispose();
             }
             var st = new StackTrace(ex, true);
-            // Get the top stack frame
             var frame = st.GetFrame(0);
-            // Get the line number from the stack frame
-            var lneerror = frame.GetFileLineNumber();
-            if (string.IsNullOrEmpty(ex.StackTrace.Substring(ex.StackTrace.LastIndexOf(' '))) != true)
+            if (frame != null)
             {
-                int value;
-                bool success = int.TryParse(ex.StackTrace.Substring(ex.StackTrace.LastIndexOf(' ')), out value);
-                if (success)
+                ErrorlineNo = frame.GetFileLineNumber().ToString();
+            }
+            if (string.IsNullOrEmpty(ErrorlineNo) || ErrorlineNo == "0")
+            {
+                // Fallback: try to extract line number from stack trace string
+                if (!string.IsNullOrEmpty(ex.StackTrace))
                 {
-                    ErrorlineNo = Convert.ToInt32(ex.StackTrace.Substring(ex.StackTrace.LastIndexOf(' '))).ToString();
+                    int value;
+                    bool success = int.TryParse(ex.StackTrace.Substring(ex.StackTrace.LastIndexOf(' ')).Trim(), out value);
+                    if (success)
+                        ErrorlineNo = value.ToString();
+                    else
+                        ErrorlineNo = "";
                 }
                 else
                     ErrorlineNo = "";
             }
-            else
-                ErrorlineNo = "";
             Errormsg = ex.GetType().Name.ToString();
             extype = ex.GetType().ToString();
             //exurl = HttpContext.Current.Request.Url.ToString();
@@ -417,18 +419,17 @@ app.UseStaticFiles(new StaticFileOptions
     app.UseStatusCodePages();
     app.UseCookiePolicy();
     // Use the CORS policy
-    if (!builder.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-
+    app.UseSwagger();
     // Enable middleware to serve Swagger-UI (HTML, JS, CSS, etc.),
     // specifying the Swagger JSON endpoint.
-        app.UseSwaggerUI(c =>
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", SwaggerTitle);
+        if (!builder.Environment.IsDevelopment())
         {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", SwaggerTitle);
-            c.RoutePrefix = string.Empty;  // Set Swagger UI at the root
-        });
-    }
+            c.RoutePrefix = string.Empty;  // Set Swagger UI at the root in production
+        }
+    });
  
     // use Middleware
     app.UseMiddleware(typeof(ExceptionHandlingMiddleware));
@@ -438,14 +439,7 @@ app.UseStaticFiles(new StaticFileOptions
 
     app.UseRouting();
 
-    if (builder.Environment.IsDevelopment())
-    {
-        app.UseCors();
-    }
-    else
-    {
-        app.UseCors(MyAllowSpecificOrigins);
-    }
+    app.UseCors(MyAllowSpecificOrigins);
 
     app.UseAuthentication();
     app.UseAuthorization();
@@ -455,7 +449,7 @@ app.UseStaticFiles(new StaticFileOptions
 //app.UseMiddleware<RequestTimeoutMiddleware>(TimeSpan.FromMinutes(timespan));
 app.UseEndpoints(endpoints =>
 {
-    endpoints.MapControllers().AllowAnonymous();
+    endpoints.MapControllers();
   //  endpoints.MapHub<SocketHub>("/socket");
 });
 //app.MapControllers();
@@ -491,7 +485,7 @@ app.UseEndpoints(endpoints =>
     }
         var companyName = versionInfo.CompanyName;
         #pragma warning restore CS8602,CS8604 // Dereference of a possibly null reference.
-    app.MapGet("/", () => $"Welcome to {companyName}-{env}-{ClientAppUrl}");
+    app.MapGet("/info", () => $"Welcome to {companyName}-{env}-{ClientAppUrl}");
     }
 
     app.Run();

@@ -6,7 +6,10 @@ using Emgu.CV.CvEnum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenCvSharp;
-using System.Drawing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Formats.Png;
 using System.Text;
 using System.Text.RegularExpressions;
 using Tesseract;
@@ -75,21 +78,20 @@ namespace AllinoneBalloon.Controllers
                         s_w = obj.width;
                         s_h = obj.height;
 
-                        System.Drawing.RectangleF rectElipse = new System.Drawing.RectangleF(obj.x, obj.y, obj.width, obj.height);
+                        SixLabors.ImageSharp.RectangleF rectElipse = new SixLabors.ImageSharp.RectangleF(obj.x, obj.y, obj.width, obj.height);
                         lstCircle.Add(new AllinoneBalloon.Entities.Common.Circle_AutoBalloon { Bounds = rectElipse });
                         string OriginalImage = OrgPath;
-                        System.Drawing.Rectangle rectElipse1 = new System.Drawing.Rectangle(obj.x, obj.y, obj.width, obj.height);
-                        Bitmap originalImage = new Bitmap(SelImageFile);
-                        Bitmap croppedImage = helper.CropImage(originalImage, rectElipse1);
-                        // Create a new image with a specific resolution (e.g., 300 DPI)
-                        Bitmap newImage = helper.ChangeResolution(croppedImage, 300.0f);
+                        var cropRect = new SixLabors.ImageSharp.Rectangle(obj.x, obj.y, obj.width, obj.height);
+                        using var originalImage = SixLabors.ImageSharp.Image.Load<Rgba32>(SelImageFile);
+                        using var croppedImage = originalImage.Clone(x => x.Crop(cropRect));
+                        croppedImage.Metadata.HorizontalResolution = 300;
+                        croppedImage.Metadata.VerticalResolution = 300;
                         FileInfo cfi = new FileInfo(SelImageFile);
                         string cropname = Path.Combine(Path.GetTempPath(), "cropname_" + Guid.NewGuid().ToString() + cfi.Extension);
-                        // Save or use the new image
-                        croppedImage.Save(cropname);
+                        croppedImage.Save(cropname, new PngEncoder());
                         temp = cropname;
 
-                        string customLanguagePath = new DirectoryInfo(Environment.CurrentDirectory).FullName + @"\tessdata";
+                        string customLanguagePath = Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).FullName, "tessdata");
                         //_ocr = new Emgu.CV.OCR.Tesseract(customLanguagePath, "IMSsym1", Emgu.CV.OCR.OcrEngineMode.Default);
                         string ocrtext = string.Empty;
                         bool usedPaddleOcr = false;
@@ -145,7 +147,7 @@ namespace AllinoneBalloon.Controllers
                                 // Retrieve text
                                 string regionText = character.Text;
                                 // Retrieve position (bounding box)
-                                System.Drawing.Rectangle textLineBox = character.Region;
+                                var textLineBox = character.Region;
                                 RectSize TextSize = new RectSize() { x = textLineBox.X, y = textLineBox.Y, w = textLineBox.Width, h = textLineBox.Height };
                                 AllinoneBalloon.Entities.Common.Rect rect = helper.GenerateRectangles(source, temp, lstCircle, croppedSize, regionText, TextSize, rects);
                                 rects.Add(rect);
@@ -229,6 +231,35 @@ namespace AllinoneBalloon.Controllers
                         string isplmin_mintol = "";
                         string[] linesArray = ocrtext.Split(new string[] { "\n", Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
                         linesArray = linesArray.Where(o => o != "ë ." && o != "/ ." && o != "Z-J:" && o != "-." && o != "ë" && o != "û" && o != "Z ë :").ToArray();
+
+                        // Filter out non-dimension text (labels, notes, drawing annotations)
+                        string[] splSkipWords = { "DETAIL", "VIEW", "SECTION", "DRAWING", "FRAME", "SHEET",
+                            "ACCEPTANCE", "CRITERIA", "ESTIMATED", "WEIGHT", "FLOW AREA",
+                            "SURFACES", "REQUIRE", "PLATING", "UNLESS", "OTHERWISE", "SPECIFIED",
+                            "TOLERANCE", "INTERPRET", "FINISH", "MATERIAL", "SCALE", "NOTE",
+                            "INCREASED", "DECREASED", "ANGLE ALLOWED", "INCREMENTS", "CHORD LENGTH",
+                            "DO NOT", "DIMENSIONS ARE", "CONFIDENTIAL", "PROPRIETARY", "COPYRIGHT" };
+                        linesArray = linesArray.Where(line =>
+                        {
+                            string trimmed = line.Trim().ToUpper();
+                            // Skip lines that are purely alphabetic with no digits (e.g., "OL E", "DETAIL D")
+                            if (!string.IsNullOrEmpty(trimmed) && !trimmed.Any(c => char.IsDigit(c)) && !trimmed.Contains("¡") && !trimmed.Contains("±"))
+                                return false;
+                            // Skip lines containing known non-dimension keywords
+                            if (splSkipWords.Any(sw => trimmed.Contains(sw)))
+                                return false;
+                            // Skip single/double letter lines (datum refs like "N", "S", "OL")
+                            string lettersOnly = new string(trimmed.Where(c => char.IsLetter(c)).ToArray());
+                            if (lettersOnly.Length > 0 && !trimmed.Any(c => char.IsDigit(c) || c == '¡' || c == '±' || c == '°'))
+                                return false;
+                            return true;
+                        }).ToArray();
+                        // Rebuild ocrtext from filtered lines so downstream logic uses clean data
+                        if (linesArray.Length > 0)
+                        {
+                            ocrtext = string.Join("\n", linesArray);
+                            objerr.WriteErrorLog("SplBalloon filtered ocrtext: " + ocrtext.Replace("\n", " | "));
+                        }
                         if (linesArray.Length > 1)
                         {
                             if (linesArray[0].Length == 1 && Regex.IsMatch(linesArray[0], @"^[$A-Za-z]+$"))
@@ -641,7 +672,21 @@ namespace AllinoneBalloon.Controllers
                             {
                                 if (lstoCRResults.Count > 0 && k == 1)
                                 {
-                                    balincid = lstoCRResults.Where(r => r.Balloon != null).Max(r => Convert.ToInt64(r.Balloon.Substring(0, r.Balloon.IndexOf('.') > 0 ? r.Balloon.IndexOf('.') : r.Balloon.Length))) + 1;
+                                    var validBalloons = lstoCRResults
+                                        .Where(r => !string.IsNullOrWhiteSpace(r.Balloon))
+                                        .Select(r =>
+                                        {
+                                            string numPart = r.Balloon.Contains('.')
+                                                ? r.Balloon.Substring(0, r.Balloon.IndexOf('.'))
+                                                : r.Balloon;
+                                            long val;
+                                            return long.TryParse(numPart, out val) ? val : 0;
+                                        })
+                                        .Where(v => v > 0);
+                                    if (validBalloons.Any())
+                                    {
+                                        balincid = validBalloons.Max() + 1;
+                                    }
                                 }
                                 AllinoneBalloon.Entities.Common.OCRResults oCRResults1 = new AllinoneBalloon.Entities.Common.OCRResults();
                                 string cnt = k.ToString();
@@ -720,6 +765,7 @@ namespace AllinoneBalloon.Controllers
                                 oCRResults1.height = (int)s_h;
                                 oCRResults1.id = "";
                                 oCRResults1.selectedRegion = "Spl";
+                                oCRResults1.isballooned = true;
                                 if (isplmin && isplmin_mintol != "" && isplmin_pltol != "" && isplmin_spec != "")
                                 {
                                     oCRResults1.Spec = isplmin_spec;

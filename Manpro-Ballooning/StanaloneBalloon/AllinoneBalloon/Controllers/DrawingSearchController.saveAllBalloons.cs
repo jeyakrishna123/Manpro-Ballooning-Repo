@@ -46,9 +46,9 @@ namespace AllinoneBalloon.Controllers
             {
                 envcpath = AppDomain.CurrentDomain.BaseDirectory;
             }
-            string workingDir = envcpath + "\\Drawed Images\\";
+            string workingDir = System.IO.Path.Combine(envcpath, "Drawed Images");
             string Urole = user.Role;
-            workingDir = workingDir + session_UserId + "\\downloads\\";
+            workingDir = System.IO.Path.Combine(workingDir, session_UserId, "downloads") + System.IO.Path.DirectorySeparatorChar;
 
             if (!Directory.Exists(workingDir))
             {

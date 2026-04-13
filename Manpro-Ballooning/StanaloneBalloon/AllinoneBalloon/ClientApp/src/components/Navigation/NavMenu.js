@@ -632,7 +632,7 @@ export class NavMenu extends Component {
             useStore.setState({ templatetype: "" });
             return;
         }
-            let BASE_URL = process.env.REACT_APP_SERVER;
+            let BASE_URL = process.env.REACT_APP_SERVER || '';
             let url = `${BASE_URL}/api/fileupload/FetchDrawing`;
             useStore.setState({ isLoading: true, loadingText: "Fetching drawing images..." });
 
@@ -710,7 +710,7 @@ export class NavMenu extends Component {
                     return;
                 }
 
-                const r = saveRes.data;
+                let r = saveRes.data;
                 if (!r || r.length === 0) {
                     useStore.setState({ isLoading: false, showdownloadComponent: false });
                     showAlert("Error", "No balloon data returned from server.");

@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity;
-using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Drawing.Imaging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.PixelFormats;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -798,14 +799,15 @@ namespace AllinoneBalloon.Common
         #endregion
 
         #region Resize and Crop Image
-        public static System.Drawing.Image resizeImage(System.Drawing.Image imgToResize, Size size)
+        public static Image<Rgba32> resizeImage(Image<Rgba32> imgToResize, SixLabors.ImageSharp.Size size)
         {
-            return new Bitmap(imgToResize, size);
+            var resized = imgToResize.Clone(x => x.Resize(size.Width, size.Height));
+            return resized;
         }
-        public static System.Drawing.Image cropImage(System.Drawing.Image img, System.Drawing.Rectangle cropArea)
+        public static Image<Rgba32> cropImage(Image<Rgba32> img, SixLabors.ImageSharp.Rectangle cropArea)
         {
-            Bitmap bmpImage = new Bitmap(img);
-            return bmpImage.Clone(cropArea, bmpImage.PixelFormat);
+            var cropped = img.Clone(x => x.Crop(cropArea));
+            return cropped;
         }
         #endregion
 

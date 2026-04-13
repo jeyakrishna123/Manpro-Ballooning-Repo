@@ -307,10 +307,8 @@ namespace AllinoneBalloon.Controllers
                 // Apply exclusion zone filtering (removes CONFIDENTIAL text blocks etc.)
                 try
                 {
-                    using (var bmp = new System.Drawing.Bitmap(imagePath))
-                    {
-                        words = FilterExclusionZones(words, bmp.Width, bmp.Height);
-                    }
+                    var imgInfo = SixLabors.ImageSharp.Image.Identify(imagePath);
+                    words = FilterExclusionZones(words, imgInfo.Width, imgInfo.Height);
                 }
                 catch (Exception ex)
                 {
@@ -404,10 +402,8 @@ namespace AllinoneBalloon.Controllers
                 // Apply exclusion zone filtering
                 try
                 {
-                    using (var bmp = new System.Drawing.Bitmap(imagePath))
-                    {
-                        words = FilterExclusionZones(words, bmp.Width, bmp.Height);
-                    }
+                    var imgInfo = SixLabors.ImageSharp.Image.Identify(imagePath);
+                    words = FilterExclusionZones(words, imgInfo.Width, imgInfo.Height);
                 }
                 catch (Exception ex)
                 {
@@ -457,10 +453,8 @@ namespace AllinoneBalloon.Controllers
                 // Apply exclusion zone filtering
                 try
                 {
-                    using (var bmp = new System.Drawing.Bitmap(imagePath))
-                    {
-                        words = FilterExclusionZones(words, bmp.Width, bmp.Height);
-                    }
+                    var imgInfo = SixLabors.ImageSharp.Image.Identify(imagePath);
+                    words = FilterExclusionZones(words, imgInfo.Width, imgInfo.Height);
                 }
                 catch (Exception ex)
                 {

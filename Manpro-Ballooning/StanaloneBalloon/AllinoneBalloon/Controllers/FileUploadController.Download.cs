@@ -20,8 +20,8 @@ using System.Threading.Tasks;
 using System.Data;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Drawing.Imaging;
-using System.Drawing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using static System.Net.WebRequestMethods;
 using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
@@ -111,7 +111,7 @@ namespace AllinoneBalloon.Controllers
                 {
                     Directory.CreateDirectory(workingDir);
                 }
-                string samplePath = System.IO.Path.Combine(clientPath, "sample");
+                string samplePath = System.IO.Path.Combine(workingDir, "sample");
                 samplePath = helper.AddTrailingSlash(samplePath);
                 if (!Directory.Exists(samplePath))
                 {
@@ -120,23 +120,26 @@ namespace AllinoneBalloon.Controllers
                 #endregion
 
                 #region User Authentication
+                jwtToken = await helper.GetToken(HttpContext);
                 user = await helper.GetLoggedUser(HttpContext);
-                if (user != null)
+                if (user == null)
                 {
-                    username = user.Name;
-                }
-                else
-                {
-                    await Task.Run(() =>
+                    var nameId = jwtToken?.Claims?.Where(c => c.Type == "unique_name" || c.Type == System.Security.Claims.ClaimTypes.Name).Select(c => c.Value).FirstOrDefault();
+                    if (!string.IsNullOrEmpty(nameId))
                     {
-                        return Unauthorized("You are not authorized to access this resource.");
-                    });
+                        var userId = long.Parse(nameId);
+                        user = context.Users.Find(userId);
+                    }
+                    if (user == null)
+                    {
+                        return Unauthorized("Your session has expired. Please log out and log in again.");
+                    }
                 }
+                username = user.Name;
                 #endregion
 
                 #region User Group
                 string Urole = user.Role;
-                jwtToken = await helper.GetToken(HttpContext);
                 var gid = jwtToken.Claims.Where(c => c.Type == "groupId").Select(c => c.Value).FirstOrDefault();
                 bool groupExist = long.TryParse(gid, out groupId);
                 sourceDir = System.IO.Path.Combine(sourceDir, groupId.ToString());
@@ -174,7 +177,7 @@ namespace AllinoneBalloon.Controllers
                     });
                 }
                 long hdrid = hdr.BaloonDrwID;
-                string templateDir = envcpath + "\\Templates\\";
+                string templateDir = System.IO.Path.Combine(envcpath, "Templates") + System.IO.Path.DirectorySeparatorChar;
                 var files = context.TblBaloonDrawingLiners.Where(w => w.BaloonDrwID == hdrid).GroupBy(w => w.BaloonDrwFileID).Select(g => new
                 {
                     Name = g.Key,
@@ -260,9 +263,9 @@ namespace AllinoneBalloon.Controllers
 
                             // Convert PNG to JPG and add to zip
                             string jpgFile = System.IO.Path.ChangeExtension(pngFile, ".jpg");
-                            using (var img = System.Drawing.Image.FromFile(pngFile))
+                            using (var img = SixLabors.ImageSharp.Image.Load(pngFile))
                             {
-                                img.Save(jpgFile, ImageFormat.Jpeg);
+                                img.Save(jpgFile, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
                             }
                             zipArchive.CreateEntryFromFile(jpgFile, System.IO.Path.GetFileName(jpgFile));
                         }

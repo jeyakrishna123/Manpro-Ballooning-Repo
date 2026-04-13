@@ -7,7 +7,6 @@ using DocumentFormat.OpenXml.Spreadsheet;
 using DocumentFormat.OpenXml.Wordprocessing;
 using System.Text.RegularExpressions;
 using System.Globalization;
-using System.Drawing;
 using System.Data;
 using System.Diagnostics.Metrics;
 using System.Dynamic;

@@ -180,7 +180,7 @@ export class FileUpload extends Component {
             let savedSessionId = sessionStorage.getItem('lastSessionId') || state.sessionId;
             let req = { drawingNo: state.drawingNo, revNo: state.revNo, baseUrl: window.origin, sessionUserId: savedSessionId };
             setTimeout(async () => {
-                let BASE_URL = process.env.REACT_APP_SERVER;
+                let BASE_URL = process.env.REACT_APP_SERVER || '';
                 let url = BASE_URL + "/api/fileupload/Uploadorsearch";
                 useStore.setState({ isLoading: true, loadingText: "Reloading your drawing... Please wait..." })
                 await axios.post(url, req, {
@@ -685,7 +685,7 @@ export class FileUpload extends Component {
 
             // Check OCR engine health after drawing loads
             try {
-                let BASE_URL = process.env.REACT_APP_SERVER;
+                let BASE_URL = process.env.REACT_APP_SERVER || '';
                 let currentUser = useStore.getState().user[0];
                 let healthRes = await axios.get(`${BASE_URL}/api/drawingsearch/OcrHealth`, {
                     headers: { "Authorization": "Bearer " + currentUser.jwtToken },
@@ -742,7 +742,7 @@ export class FileUpload extends Component {
         let currentUser = state.user[0];
         let req = { drawingNo: state.drawingNo, revNo: state.revNo, baseUrl: window.origin, sessionUserId: state.sessionId };
         setTimeout(async() => {
-            let BASE_URL = process.env.REACT_APP_SERVER;
+            let BASE_URL = process.env.REACT_APP_SERVER || '';
             let url = BASE_URL + "/api/fileupload/Uploadorsearch";
             useStore.setState({ isLoading: true, loadingText: "Loading your content..." })
             await axios.post(url, req, {
@@ -793,7 +793,7 @@ export class FileUpload extends Component {
         // console.log(req,state)
         let currentUser = state.user[0];
         try {
-            let BASE_URL = process.env.REACT_APP_SERVER;
+            let BASE_URL = process.env.REACT_APP_SERVER || '';
             let url = BASE_URL + "/api/fileupload/presearch";
             useStore.setState({ isLoading: true, loadingText: "Loading your content..." })
             await axios.post(url, req, {
@@ -916,7 +916,7 @@ export class FileUpload extends Component {
 
         let currentUser = state.user[0];
         try {
-            let BASE_URL = process.env.REACT_APP_SERVER;
+            let BASE_URL = process.env.REACT_APP_SERVER || '';
             let url = BASE_URL + "/api/fileupload/UploadFile";
            await axios.post(url, formData, {
                 headers: {

@@ -94,6 +94,7 @@ const Annotation = ({ n, movecircle, shapeProps, isSelected, onSelect, onDblClic
         fontText = scale;
     }  
  
+    if (isNaN(keyplace)) keyplace = 0;
     let textFontSize = fontSize * fontText;
     switch (keyplace.toString().length) {
         case 1:

@@ -3,28 +3,31 @@ using PdfSharp.Pdf;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.PixelFormats;
-using System.Drawing;
-using System.Drawing.Imaging;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Drawing.Processing;
 
 namespace AllinoneBalloon.Common
 {
     public partial class Helper
     {
         #region Image Process
-        public MemoryStream imageToByteArray(System.Drawing.Image imageIn, ErrorLog objerr)
+        public MemoryStream imageToByteArray(string imagePath, ErrorLog objerr)
         {
-            using (MemoryStream ms = new MemoryStream())
+            var ms = new MemoryStream();
+            try
             {
-                try
+                using (var image = SixLabors.ImageSharp.Image.Load(imagePath))
                 {
-                    imageIn.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    image.Save(ms, new PngEncoder());
+                    ms.Position = 0;
                 }
-                catch (Exception ex)
-                {
-                    objerr.WriteErrorToText(ex);
-                }
-                return ms;
             }
+            catch (Exception ex)
+            {
+                objerr.WriteErrorToText(ex);
+            }
+            return ms;
         }
         public string scaleImage(List<AllinoneBalloon.Entities.Common.PartialImage> partial_image, string s, int itemview, bool isFlag, ErrorLog objerr)
         {
@@ -32,85 +35,71 @@ namespace AllinoneBalloon.Common
             string resize = "false";
             try
             {
-                using (FileStream inputStream = System.IO.File.OpenRead(s))
+                int originalWidth, originalHeight;
+                byte[] fileBytes = System.IO.File.ReadAllBytes(s);
+                using (var image = SixLabors.ImageSharp.Image.Load<Rgba32>(fileBytes))
                 {
-                    using (SixLabors.ImageSharp.Image image = SixLabors.ImageSharp.Image.Load(s))
+                    originalWidth = image.Width;
+                    originalHeight = image.Height;
+                    int newWidth, newHeight;
+                    if (image.Width > maximum || image.Height > maximum)
                     {
-                        int originalWidth = image.Width;
-                        int originalHeight = image.Height;
-                        int newWidth, newHeight;
-                        if (image.Width > maximum || image.Height > maximum)
+                        resize = "true";
+                        if (originalWidth > originalHeight)
                         {
-                            resize = "true";
-                            if (originalWidth > originalHeight)
-                            {
-                                // Landscape orientation
-                                newWidth = maximum;
-                                newHeight = (int)((double)originalHeight / originalWidth * maximum);
-                            }
-                            else
-                            {
-                                // Portrait or square orientation
-                                newHeight = maximum;
-                                newWidth = (int)((double)originalWidth / originalHeight * maximum);
-                            }
-                            using (Image<Rgba32> rgbaImage = image.CloneAs<Rgba32>())
-                            {
-                                // Calculate the scaling factor for resizing
-                                float widthScale = (float)newWidth / originalWidth;
-                                float heightScale = (float)newHeight / originalHeight;
-                                float scale = Math.Min(widthScale, heightScale);
-                                int scaledWidth = (int)(originalWidth * scale);
-                                int scaledHeight = (int)(originalHeight * scale);
-                                FileInfo fi = new FileInfo(s);
-                                string fileName = fi.Name;
-                                if (isFlag)
-                                {
-                                    partial_image.Add(new AllinoneBalloon.Entities.Common.PartialImage
-                                    {
-                                        x = 0,
-                                        y = 0,
-                                        width = newWidth,
-                                        height = newHeight,
-                                        src = Convert.ToString(fileName),
-                                        scale = scale,
-                                        fullWidth = originalWidth,
-                                        fullHeight = originalHeight,
-                                        item = itemview,
-                                        count = partial_image.Count()
-                                    });
-                                }
-                                // Resize the image                              
-
-                                using (Image<Rgba32> resizedImage = rgbaImage.Clone(x => x.Resize(scaledWidth, scaledHeight)))
-                                {
-                                    // Save the resized image to the output path
-                                    image.Dispose();
-                                    inputStream.Dispose();
-                                    resizedImage.Save(s); // Change the format if needed
-                                }
-                            }
+                            newWidth = maximum;
+                            newHeight = (int)((double)originalHeight / originalWidth * maximum);
                         }
                         else
                         {
-                            if (isFlag)
+                            newHeight = maximum;
+                            newWidth = (int)((double)originalWidth / originalHeight * maximum);
+                        }
+                        float widthScale = (float)newWidth / originalWidth;
+                        float heightScale = (float)newHeight / originalHeight;
+                        float scale = Math.Min(widthScale, heightScale);
+                        int scaledWidth = (int)(originalWidth * scale);
+                        int scaledHeight = (int)(originalHeight * scale);
+                        FileInfo fi = new FileInfo(s);
+                        string fileName = fi.Name;
+                        if (isFlag)
+                        {
+                            partial_image.Add(new AllinoneBalloon.Entities.Common.PartialImage
                             {
-                                FileInfo fi = new FileInfo(s);
-                                string fileName = fi.Name;
-                                partial_image.Add(new AllinoneBalloon.Entities.Common.PartialImage
-                                {
-                                    x = 0,
-                                    y = 0,
-                                    width = originalWidth,
-                                    height = originalHeight,
-                                    src = Convert.ToString(fileName),
-                                    scale = 1,
-                                    fullWidth = originalWidth,
-                                    fullHeight = originalHeight,
-                                    item = itemview,
-                                    count = partial_image.Count()
-                                });
-                            }
+                                x = 0,
+                                y = 0,
+                                width = newWidth,
+                                height = newHeight,
+                                src = Convert.ToString(fileName),
+                                scale = scale,
+                                fullWidth = originalWidth,
+                                fullHeight = originalHeight,
+                                item = itemview,
+                                count = partial_image.Count()
+                            });
+                        }
+                        image.Mutate(x => x.Resize(scaledWidth, scaledHeight));
+                        image.Save(s);
+                    }
+                    else
+                    {
+                        if (isFlag)
+                        {
+                            FileInfo fi = new FileInfo(s);
+                            string fileName = fi.Name;
+                            partial_image.Add(new AllinoneBalloon.Entities.Common.PartialImage
+                            {
+                                x = 0,
+                                y = 0,
+                                width = originalWidth,
+                                height = originalHeight,
+                                src = Convert.ToString(fileName),
+                                scale = 1,
+                                fullWidth = originalWidth,
+                                fullHeight = originalHeight,
+                                item = itemview,
+                                count = partial_image.Count()
+                            });
                         }
                     }
                 }
@@ -122,93 +111,79 @@ namespace AllinoneBalloon.Common
             return resize;
         }
 
-        public Bitmap CropImage(Bitmap img, System.Drawing.Rectangle cropArea)
+        public Image<Rgba32> CropImage(Image<Rgba32> img, SixLabors.ImageSharp.Rectangle cropArea)
         {
-            Bitmap croppedImage = img.Clone(cropArea, img.PixelFormat);
+            var croppedImage = img.Clone(x => x.Crop(cropArea));
             return croppedImage;
         }
-        public Bitmap ChangeResolution(Bitmap img, float newDpi)
+        public Image<Rgba32> ChangeResolution(Image<Rgba32> img, float newDpi)
         {
-            Bitmap newImage = new Bitmap(img.Width, img.Height);
-            newImage.SetResolution(newDpi, newDpi);
-            using (Graphics g = Graphics.FromImage(newImage))
-            {
-                g.DrawImage(img, 0, 0);
-            }
+            var newImage = img.Clone();
+            newImage.Metadata.HorizontalResolution = newDpi;
+            newImage.Metadata.VerticalResolution = newDpi;
             return newImage;
         }
 
         public string ChangeResolutionSmall(string inputPath, string outputPath, float targetDpi)
         {
-            using (Bitmap original = new Bitmap(inputPath))
+            using (var original = SixLabors.ImageSharp.Image.Load<Rgba32>(inputPath))
             {
-                float scaleFactor = targetDpi / original.HorizontalResolution;
-
-                int newWidth = (int)(original.Width * scaleFactor);
-                int newHeight = (int)(original.Height * scaleFactor);
-
-                using (Bitmap resized = new Bitmap(original.Width, original.Height))
-                {
-                    resized.SetResolution(targetDpi, targetDpi);
-
-                    using (Graphics graphics = Graphics.FromImage(resized))
-                    {
-                        graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                        graphics.DrawImage(original, 0, 0, original.Width, original.Height);
-                    }
-
-                    resized.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
-                }
+                original.Metadata.HorizontalResolution = targetDpi;
+                original.Metadata.VerticalResolution = targetDpi;
+                original.Save(outputPath, new PngEncoder());
             }
             return outputPath;
         }
 
         public List<AllinoneBalloon.Entities.Common.ResizeImageSize> ResizeImage(List<AllinoneBalloon.Entities.Common.ResizeImageSize> size, string inputPath, string outputPath, int maxWidth, int maxHeight)
         {
-            // List<AllinoneBalloon.Entities.Common.ResizeImageSize> size = new List<AllinoneBalloon.Entities.Common.ResizeImageSize>();
-            using (System.Drawing.Image originalImage = System.Drawing.Image.FromFile(inputPath))
+            const int maxRetries = 3;
+            for (int attempt = 0; attempt < maxRetries; attempt++)
             {
-                // Get original dimensions
-                int originalWidth = originalImage.Width;
-                int originalHeight = originalImage.Height;
-
-                // Check if resizing is needed
-                if (originalWidth <= maxWidth && originalHeight <= maxHeight)
+                try
                 {
-                    // Save as PNG for lossless quality (critical for OCR accuracy)
-                    originalImage.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
-                    size.Add(new AllinoneBalloon.Entities.Common.ResizeImageSize { Width = originalWidth, Height = originalHeight });
-                    return size;
-                }
-
-                // Calculate the scaling factor
-                double widthRatio = (double)maxWidth / originalWidth;
-                double heightRatio = (double)maxHeight / originalHeight;
-                double scaleFactor = Math.Min(widthRatio, heightRatio);
-
-                // Calculate the new dimensions
-                int newWidth = (int)(originalWidth * scaleFactor);
-                int newHeight = (int)(originalHeight * scaleFactor);
-
-                // Create a new bitmap with the new dimensions
-                using (Bitmap resizedImage = new Bitmap(newWidth, newHeight))
-                {
-                    // Draw the resized image
-                    using (Graphics graphics = Graphics.FromImage(resizedImage))
+                    byte[] fileBytes = System.IO.File.ReadAllBytes(inputPath);
+                    using (var originalImage = SixLabors.ImageSharp.Image.Load<Rgba32>(fileBytes))
                     {
-                        graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                        graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                        int originalWidth = originalImage.Width;
+                        int originalHeight = originalImage.Height;
 
-                        graphics.DrawImage(originalImage, 0, 0, newWidth, newHeight);
+                        // Check if resizing is needed
+                        if (originalWidth <= maxWidth && originalHeight <= maxHeight)
+                        {
+                            originalImage.Save(outputPath, new PngEncoder());
+                            size.Add(new AllinoneBalloon.Entities.Common.ResizeImageSize { Width = originalWidth, Height = originalHeight });
+                            return size;
+                        }
+
+                        // Calculate the scaling factor
+                        double widthRatio = (double)maxWidth / originalWidth;
+                        double heightRatio = (double)maxHeight / originalHeight;
+                        double scaleFactor = Math.Min(widthRatio, heightRatio);
+
+                        int newWidth = (int)(originalWidth * scaleFactor);
+                        int newHeight = (int)(originalHeight * scaleFactor);
+
+                        // Resize with high quality bicubic resampler (same as HighQualityBicubic)
+                        using (var resizedImage = originalImage.Clone(x => x.Resize(new ResizeOptions
+                        {
+                            Size = new SixLabors.ImageSharp.Size(newWidth, newHeight),
+                            Sampler = KnownResamplers.Bicubic,
+                            Mode = ResizeMode.Stretch
+                        })))
+                        {
+                            resizedImage.Save(outputPath, new PngEncoder());
+                        }
+                        size.Add(new AllinoneBalloon.Entities.Common.ResizeImageSize { Width = newWidth, Height = newHeight });
+                        return size;
                     }
-
-                    // Save as PNG for lossless quality (critical for OCR accuracy)
-                    resizedImage.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
                 }
-                size.Add(new AllinoneBalloon.Entities.Common.ResizeImageSize { Width = newWidth, Height = newHeight });
-                return size;
+                catch (IOException) when (attempt < maxRetries - 1)
+                {
+                    System.Threading.Thread.Sleep(300 * (attempt + 1));
+                }
             }
+            return size;
         }
         public async Task<bool> RotateImagefile(string ImageFile, int angle)
         {
@@ -216,27 +191,11 @@ namespace AllinoneBalloon.Common
             {
                 if (angle != 0)
                 {
-                    System.Drawing.Image orimage = System.Drawing.Image.FromFile(ImageFile);
-                    RotateFlipType r;
-                    switch (angle)
+                    using (var image = SixLabors.ImageSharp.Image.Load(ImageFile))
                     {
-                        case 90:
-                            r = RotateFlipType.Rotate90FlipNone;
-                            orimage.RotateFlip(r);
-
-                            break;
-                        case 180:
-                            r = RotateFlipType.Rotate180FlipNone;
-                            orimage.RotateFlip(r);
-                            break;
-                        case 270:
-                            r = RotateFlipType.Rotate270FlipNone;
-                            orimage.RotateFlip(r);
-                            break;
+                        image.Mutate(x => x.Rotate(angle));
+                        image.Save(ImageFile);
                     }
-                    orimage.Save(ImageFile);
-                    orimage.Dispose();
-
                 }
                 return true;
             });
@@ -327,18 +286,17 @@ namespace AllinoneBalloon.Common
             int width = 400;
             int height = 400;
             string path = sourceDir + $"{text}.png";
-            using (Bitmap bitmap = new Bitmap(width, height))
+            using (var image = new Image<Rgba32>(width, height, SixLabors.ImageSharp.Color.White))
             {
-                using (Graphics g = Graphics.FromImage(bitmap))
+                var font = SixLabors.Fonts.SystemFonts.CreateFont("Arial", 20);
+                var textOptions = new SixLabors.ImageSharp.Drawing.Processing.RichTextOptions(font)
                 {
-                    g.Clear(System.Drawing.Color.White);
-                    using (System.Drawing.Font font = new System.Drawing.Font("Arial", 20))
-                    {
-                        System.Drawing.SizeF textSize = g.MeasureString(text, font);
-                        g.DrawString(text, font, Brushes.Black, (width - textSize.Width) / 2, (height - textSize.Height) / 2);
-                    }
-                }
-                bitmap.Save(sourceDir + $"{text}.png", System.Drawing.Imaging.ImageFormat.Png);
+                    HorizontalAlignment = SixLabors.Fonts.HorizontalAlignment.Center,
+                    VerticalAlignment = SixLabors.Fonts.VerticalAlignment.Center,
+                    Origin = new SixLabors.ImageSharp.PointF(width / 2f, height / 2f)
+                };
+                image.Mutate(x => x.DrawText(textOptions, text, SixLabors.ImageSharp.Color.Black));
+                image.Save(path, new PngEncoder());
             }
             return path;
         }

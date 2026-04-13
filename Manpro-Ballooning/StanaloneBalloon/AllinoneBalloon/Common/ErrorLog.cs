@@ -19,11 +19,11 @@ namespace AllinoneBalloon.Common
         
         public void WriteErrorToText(Exception ex)
         {
-            if (!Directory.Exists(AppContext.BaseDirectory + "\\ErrorLog"))
+            if (!Directory.Exists(System.IO.Path.Combine(AppContext.BaseDirectory, "ErrorLog")))
             {
-                Directory.CreateDirectory(AppContext.BaseDirectory + "\\ErrorLog");
+                Directory.CreateDirectory(System.IO.Path.Combine(AppContext.BaseDirectory, "ErrorLog"));
             }
-            Path = AppContext.BaseDirectory + "\\ErrorLog\\";
+            Path = System.IO.Path.Combine(AppContext.BaseDirectory, "ErrorLog") + System.IO.Path.DirectorySeparatorChar;
             var line = Environment.NewLine + Environment.NewLine;
 
             //ErrorlineNo = ex.StackTrace.Substring(ex.StackTrace.Length - 7, 7);
@@ -56,7 +56,7 @@ namespace AllinoneBalloon.Common
                 {
                     Directory.CreateDirectory(Path);
                 }
-                Path = Path + DateTime.Today.ToString("dd-MM-yy") + ".txt";   //Text File Name
+                Path = System.IO.Path.Combine(Path, DateTime.Today.ToString("dd-MM-yy") + ".txt");
                 if (!File.Exists(Path))
                 {
                     File.Create(Path).Dispose();
@@ -82,11 +82,11 @@ namespace AllinoneBalloon.Common
         }
         public void WriteErrorLog(string ex)
         {
-            if (!Directory.Exists(AppContext.BaseDirectory + "\\ErrorLog"))
+            if (!Directory.Exists(System.IO.Path.Combine(AppContext.BaseDirectory, "ErrorLog")))
             {
-                Directory.CreateDirectory(AppContext.BaseDirectory + "\\ErrorLog");
+                Directory.CreateDirectory(System.IO.Path.Combine(AppContext.BaseDirectory, "ErrorLog"));
             }
-            Path = AppContext.BaseDirectory + "\\ErrorLog\\";
+            Path = System.IO.Path.Combine(AppContext.BaseDirectory, "ErrorLog") + System.IO.Path.DirectorySeparatorChar;
             var line = Environment.NewLine + Environment.NewLine;
             //exurl = HttpContext.Current.Request.Url.ToString();
             ErrorLocation = ex.ToString();
@@ -97,7 +97,7 @@ namespace AllinoneBalloon.Common
                 {
                     Directory.CreateDirectory(Path);
                 }
-                Path = Path + "Loginfo" + DateTime.Today.ToString("dd-MM-yy") + ".txt";   //Text File Name
+                Path = System.IO.Path.Combine(Path, "Loginfo" + DateTime.Today.ToString("dd-MM-yy") + ".txt");
                 if (!File.Exists(Path))
                 {
                     File.Create(Path).Dispose();

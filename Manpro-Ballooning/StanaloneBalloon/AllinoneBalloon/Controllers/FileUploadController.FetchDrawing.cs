@@ -41,22 +41,26 @@ namespace AllinoneBalloon.Controllers
                 sourceDir = helper.AddTrailingSlash(sourceDir);
 
                 #region User Authentication
+                jwtToken = await helper.GetToken(HttpContext);
                 user = await helper.GetLoggedUser(HttpContext);
-                if (user != null)
+                if (user == null)
                 {
-                    username = user.Name;
-                }
-                else
-                {
-                    await Task.Run(() =>
+                    var nameId = jwtToken?.Claims?.Where(c => c.Type == "unique_name" || c.Type == System.Security.Claims.ClaimTypes.Name).Select(c => c.Value).FirstOrDefault();
+                    if (!string.IsNullOrEmpty(nameId))
                     {
-                        return Unauthorized("You are not authorized to access this resource.");
-                    });
+                        var userId = long.Parse(nameId);
+                        using var ctx = _dbcontext.CreateDbContext();
+                        user = ctx.Users.Find(userId);
+                    }
+                    if (user == null)
+                    {
+                        return Unauthorized("Your session has expired. Please log out and log in again.");
+                    }
                 }
+                username = user.Name;
                 #endregion
 
-                #region User Group 
-                jwtToken = await helper.GetToken(HttpContext);
+                #region User Group
                 var gid = jwtToken.Claims.Where(c => c.Type == "groupId").Select(c => c.Value).FirstOrDefault();
                 bool groupExist = long.TryParse(gid, out groupId);
                 sourceDir = System.IO.Path.Combine(sourceDir, groupId.ToString());

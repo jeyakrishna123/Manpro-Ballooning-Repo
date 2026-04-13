@@ -269,6 +269,36 @@ namespace AllinoneBalloon.Controllers
             return StatusCode(StatusCodes.Status200OK, res);
         }
 
+        [AllowAnonymous]
+        [HttpPost("refresh-token")]
+        public IActionResult RefreshToken()
+        {
+            try
+            {
+                UserHelper uhelper = new AllinoneBalloon.Common.UserHelper();
+                var refreshToken = Request.Cookies["refreshToken"];
+                if (string.IsNullOrEmpty(refreshToken))
+                    return BadRequest("Refresh token not found.");
+                var user = _userService.RefreshToken(refreshToken, uhelper.ipAddress(HttpContext), _context);
+                if (user == null)
+                    return Unauthorized("Invalid or expired refresh token.");
+                uhelper.setTokenCookie(user.RefreshToken, HttpContext);
+                var RList = typeof(Role)
+                    .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+                    .Where(f => f.IsLiteral && !f.IsInitOnly)
+                    .Select(f => f.GetValue(null))
+                    .ToList();
+                Dictionary<string, object> res = new Dictionary<string, object>();
+                res.Add("User", user);
+                res.Add("Roles", RList);
+                return StatusCode(StatusCodes.Status200OK, res);
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ex.Message.ToString());
+            }
+        }
+
         [Authorize(Roles = Role.Admin)]
         [HttpGet("getallUser")]
         public async Task<IActionResult> GetAll()

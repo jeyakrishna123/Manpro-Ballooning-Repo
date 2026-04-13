@@ -13,7 +13,6 @@ using System.Data;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.IdentityModel.Tokens.Jwt;
-using System.Drawing;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -47,7 +46,6 @@ using ClosedXML.Report.Utils;
 using static AllinoneBalloon.Controllers.DrawingSearchController;
 using static AllinoneBalloon.Entities.Common;
 using DocumentFormat.OpenXml.Bibliography;
-using System.Drawing.Imaging;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.AspNetCore.Authorization;
@@ -472,7 +470,7 @@ namespace AllinoneBalloon.Common
         {
             try
             {
-                Emgu.CV.Structure.Bgr drawCharColor = new Emgu.CV.Structure.Bgr(System.Drawing.Color.Red);
+                Emgu.CV.Structure.Bgr drawCharColor = new Emgu.CV.Structure.Bgr(255, 0, 0);
                 if (image.NumberOfChannels == 1)
                     CvInvoke.CvtColor(image, imageColor, ColorConversion.Gray2Bgr);
                 else
@@ -487,7 +485,7 @@ namespace AllinoneBalloon.Common
                     string text = character.Text;
 
                     // Retrieve position (bounding box)
-                    System.Drawing.Rectangle boundingBox = character.Region;
+                    var boundingBox = character.Region;
 
                     // Display text and position                
                      Console.WriteLine($"Text:{text} Position:{boundingBox} ");

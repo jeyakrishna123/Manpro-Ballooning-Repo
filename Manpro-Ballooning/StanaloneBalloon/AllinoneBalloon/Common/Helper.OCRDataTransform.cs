@@ -150,7 +150,12 @@ namespace AllinoneBalloon.Common
                 {
                     regionText = "";
                 }
-                if (regionText.EndsWith(".") || regionText.EndsWith("-") || regionText.EndsWith("û"))
+                if (regionText.EndsWith("û"))
+                    regionText = string.Concat(regionText.AsSpan(0, regionText.Length - 1), "");
+                // Only strip trailing "." or "-" if NOT part of a decimal number or tolerance range
+                if (regionText.EndsWith(".") && !Regex.IsMatch(regionText, @"\d+\.\d*\.$"))
+                    regionText = string.Concat(regionText.AsSpan(0, regionText.Length - 1), "");
+                if (regionText.EndsWith("-") && !Regex.IsMatch(regionText, @"\d+-$"))
                     regionText = string.Concat(regionText.AsSpan(0, regionText.Length - 1), "");
 
                 if (regionText.Contains(")("))
@@ -198,7 +203,10 @@ namespace AllinoneBalloon.Common
                 {
                     //regionText = regionText.Replace("-", ".");
                 }
-                if (regionText.Trim().StartsWith("I"))
+                // Strip leading "I" only when it's a stray OCR artifact before a digit
+                // (OCR sometimes reads "1" as "I"). Don't strip for "ID", "IN" or other real words
+                if (regionText.Trim().StartsWith("I") && regionText.Trim().Length > 1
+                    && char.IsDigit(regionText.Trim()[1]))
                 {
                     regionText = regionText.Substring(1);
                 }

@@ -2,6 +2,9 @@
 using Newtonsoft.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.PixelFormats;
 using static AllinoneBalloon.Entities.Common;
 
 namespace AllinoneBalloon.Common
@@ -452,29 +455,26 @@ namespace AllinoneBalloon.Common
             // Generate thumbnail instead of sending full image
             try
             {
-                using (var bmp = new System.Drawing.Bitmap(imagePath))
+                using (var image = SixLabors.ImageSharp.Image.Load<Rgba32>(imagePath))
                 {
                     int maxThumbWidth = 300;
-                    if (bmp.Width <= maxThumbWidth)
+                    if (image.Width <= maxThumbWidth)
                     {
                         return Convert.ToBase64String(File.ReadAllBytes(imagePath));
                     }
-                    float ratio = (float)maxThumbWidth / bmp.Width;
+                    float ratio = (float)maxThumbWidth / image.Width;
                     int thumbW = maxThumbWidth;
-                    int thumbH = (int)(bmp.Height * ratio);
-                    using (var thumb = new System.Drawing.Bitmap(thumbW, thumbH))
+                    int thumbH = (int)(image.Height * ratio);
+                    image.Mutate(x => x.Resize(new SixLabors.ImageSharp.Processing.ResizeOptions
                     {
-                        using (var g = System.Drawing.Graphics.FromImage(thumb))
-                        {
-                            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                            g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
-                            g.DrawImage(bmp, 0, 0, thumbW, thumbH);
-                        }
-                        using (var ms = new MemoryStream())
-                        {
-                            thumb.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
-                            return Convert.ToBase64String(ms.ToArray());
-                        }
+                        Size = new SixLabors.ImageSharp.Size(thumbW, thumbH),
+                        Sampler = SixLabors.ImageSharp.Processing.KnownResamplers.Bicubic,
+                        Mode = SixLabors.ImageSharp.Processing.ResizeMode.Stretch
+                    }));
+                    using (var ms = new MemoryStream())
+                    {
+                        image.Save(ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
+                        return Convert.ToBase64String(ms.ToArray());
                     }
                 }
             }

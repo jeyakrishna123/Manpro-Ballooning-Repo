@@ -3,7 +3,7 @@ const { env } = require('process');
 var cors = require('cors');
 
 const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_HTTPS_PORT}` :
-    env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : process.env.REACT_APP_SERVER;
+    env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : 'http://localhost:5050';
     console.log(target)
 const context =  [
   "/weatherforecast",
@@ -31,6 +31,7 @@ const context =  [
     "/api/fileupload/presearch",
     "/api/fileupload/block",
     "/api/users/login",
+    "/api/users/refresh-token",
     "/api/users/create",
     "/api/users/update",
     "/api/users/createOwn",

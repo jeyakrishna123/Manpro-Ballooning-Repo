@@ -2,6 +2,9 @@ using AllinoneBalloon.Common;
 using AllinoneBalloon.Models.Configuration;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using System.Text.RegularExpressions;
 
 namespace AllinoneBalloon.Services
@@ -70,14 +73,9 @@ namespace AllinoneBalloon.Services
                 int origW, origH;
                 try
                 {
-                    using (var stream = File.OpenRead(imagePath))
-                    {
-                        using (var bmp = new System.Drawing.Bitmap(stream, false))
-                        {
-                            origW = bmp.Width;
-                            origH = bmp.Height;
-                        }
-                    }
+                    var imageInfo = SixLabors.ImageSharp.Image.Identify(imagePath);
+                    origW = imageInfo.Width;
+                    origH = imageInfo.Height;
                 }
                 catch (Exception ex)
                 {
@@ -99,38 +97,32 @@ namespace AllinoneBalloon.Services
                 if (needsResize || needsConvert)
                 {
                     string targetExt = needsConvert ? ".png" : ext;
-                    var targetFormat = (targetExt == ".jpg" || targetExt == ".jpeg")
-                        ? System.Drawing.Imaging.ImageFormat.Jpeg
-                        : System.Drawing.Imaging.ImageFormat.Png;
-
                     tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + targetExt);
 
-                    if (needsResize)
+                    using (var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(imagePath))
                     {
-                        float ratio = Math.Min((float)maxDimension / origW, (float)maxDimension / origH);
-                        int newW = Math.Max(1, (int)(origW * ratio));
-                        int newH = Math.Max(1, (int)(origH * ratio));
-                        scaleBackX = (float)origW / newW;
-                        scaleBackY = (float)origH / newH;
+                        if (needsResize)
+                        {
+                            float ratio = Math.Min((float)maxDimension / origW, (float)maxDimension / origH);
+                            int newW = Math.Max(1, (int)(origW * ratio));
+                            int newH = Math.Max(1, (int)(origH * ratio));
+                            scaleBackX = (float)origW / newW;
+                            scaleBackY = (float)origH / newH;
 
-                        using (var bmp = new System.Drawing.Bitmap(imagePath))
-                        using (var resized = new System.Drawing.Bitmap(newW, newH))
-                        {
-                            using (var g = System.Drawing.Graphics.FromImage(resized))
+                            image.Mutate(x => x.Resize(new SixLabors.ImageSharp.Processing.ResizeOptions
                             {
-                                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                                g.DrawImage(bmp, 0, 0, newW, newH);
-                            }
-                            resized.Save(tempPath, targetFormat);
+                                Size = new SixLabors.ImageSharp.Size(newW, newH),
+                                Sampler = SixLabors.ImageSharp.Processing.KnownResamplers.Bicubic,
+                                Mode = SixLabors.ImageSharp.Processing.ResizeMode.Stretch
+                            }));
                         }
-                    }
-                    else
-                    {
-                        // Just convert format
-                        using (var bmp = new System.Drawing.Bitmap(imagePath))
+
+                        using (var fs = new FileStream(tempPath, FileMode.Create))
                         {
-                            bmp.Save(tempPath, targetFormat);
+                            if (targetExt == ".jpg" || targetExt == ".jpeg")
+                                image.Save(fs, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
+                            else
+                                image.Save(fs, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
                         }
                     }
                     sendPath = tempPath;

@@ -61,7 +61,7 @@ namespace AllinoneBalloon.Controllers
                     {
                         Directory.CreateDirectory(workingDir);
                     }
-                    string samplePath = System.IO.Path.Combine(clientPath, "sample");
+                    string samplePath = System.IO.Path.Combine(workingDir, "sample");
                     samplePath = helper.AddTrailingSlash(samplePath);
                     if (!Directory.Exists(samplePath))
                     {

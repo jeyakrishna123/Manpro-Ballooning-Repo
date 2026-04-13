@@ -251,7 +251,7 @@ namespace AllinoneBalloon.Entities
         #region Circle_AutoBalloon
         public class Circle_AutoBalloon
         {
-            public System.Drawing.RectangleF Bounds { get; set; }
+            public SixLabors.ImageSharp.RectangleF Bounds { get; set; }
         }
         #endregion
 

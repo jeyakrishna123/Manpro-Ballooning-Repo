@@ -1,5 +1,5 @@
 ﻿using ClosedXML.Excel;
-using System.Drawing;
+using ClosedXML.Excel;
 using System.Globalization;
 
 namespace AllinoneBalloon.Common
@@ -44,12 +44,7 @@ namespace AllinoneBalloon.Common
                 int newR = (int)(r + (255 - r) * (1 - opacity));
                 int newG = (int)(g + (255 - g) * (1 - opacity));
                 int newB = (int)(b + (255 - b) * (1 - opacity));
-                return ColorConverter.ToHtml(System.Drawing.Color.FromArgb(newR, newG, newB));
-            }
-            public static XLColor ToHtml(System.Drawing.Color c)
-            {
-                string hexColor = ColorTranslator.ToHtml(c);
-                return XLColor.FromHtml(hexColor);
+                return XLColor.FromHtml($"#{newR:X2}{newG:X2}{newB:X2}");
             }
         }
         public class ThisItem

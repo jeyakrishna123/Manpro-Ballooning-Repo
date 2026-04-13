@@ -49,6 +49,9 @@ namespace AllinoneBalloon.Services
             Helper helper = new AllinoneBalloon.Common.Helper(_context);
             using (var context = _context.CreateDbContext())
             {
+                string normalizedEmail = (model.UserName ?? string.Empty).Trim().ToLower();
+                string inputPassword = (model.Password ?? string.Empty).Trim();
+
                 var user = context.Users
                 .Include(g => g.UserGroups)
                 .ThenInclude(g => g.Group)
@@ -57,12 +60,12 @@ namespace AllinoneBalloon.Services
                 .Include(g => g.UserPermission)
                 .ThenInclude(g => g.Permission)
                 .AsSplitQuery()
-                .FirstOrDefault(x => x.Email == model.UserName && x.Status == UserStatus.Active);
+                .FirstOrDefault(x => x.Email.ToLower() == normalizedEmail && x.Status == UserStatus.Active);
 
                 // return null if user not found
                 if (user == null) throw new AppException("Provided User is not register with our system.");
                 // check if password is correct
-                if (!helper.VerifyPasswordHash(user.Password, model.Password)) throw new AppException("Invalid Password.");
+                if (!helper.VerifyPasswordHash(user.Password, inputPassword)) throw new AppException("Invalid Password.");
                 // authentication successful so generate jwt and refresh tokens
                 var refreshToken = generateRefreshToken(ipAddress);
                 user.RefreshTokens.Add(refreshToken);
@@ -281,7 +284,7 @@ namespace AllinoneBalloon.Services
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     Subject = claimsIdentity,
-                    Expires = DateTime.UtcNow.AddMinutes(5),//.AddDays(1),
+                    Expires = DateTime.UtcNow.AddHours(8),
                     Issuer = issuer,
                     Audience = audience,
                     SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

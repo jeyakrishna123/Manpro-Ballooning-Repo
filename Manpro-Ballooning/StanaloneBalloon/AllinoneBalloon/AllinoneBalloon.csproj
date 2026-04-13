@@ -22,6 +22,7 @@
 	  <Copyright>Copyright © 2024</Copyright>
 	  <OutputType>Exe</OutputType>
 	  <Platforms>AnyCPU;x64</Platforms>
+	  <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -42,6 +43,9 @@
 	<PropertyGroup>
 		<PublishDir>D:\Jaga\publish\</PublishDir>
 	</PropertyGroup>
+	<ItemGroup>
+		<RuntimeHostConfigurationOption Include="System.Drawing.EnableUnixSupport" Value="true" />
+	</ItemGroup>
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="ClosedXML" Version="0.102.2" />
@@ -78,6 +82,8 @@
     <PackageReference Include="PDFsharp" Version="1.50.5147" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="6.0.1" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.4" />
+    <PackageReference Include="SixLabors.Fonts" Version="2.0.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
     <PackageReference Include="System.Collections" Version="4.3.0" />
     <PackageReference Include="System.Collections.Specialized" Version="4.3.0" />

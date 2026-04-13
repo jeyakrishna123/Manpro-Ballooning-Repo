@@ -20,8 +20,7 @@ using System.Threading.Tasks;
 using System.Data;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Drawing.Imaging;
-using System.Drawing;
+using SixLabors.ImageSharp;
 using static System.Net.WebRequestMethods;
 using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
@@ -209,48 +208,20 @@ namespace AllinoneBalloon.Controllers
            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true) // Optionally load environment-specific settings
            .Build();
 
-            #region User Authentication
-            using (var context = _dbcontext.CreateDbContext())
+            helper = new AllinoneBalloon.Common.Helper(_dbcontext, _memoryCache);
+            string env = _appSettings.ENVIRONMENT;
+            if (env != "development")
             {
-                helper = new AllinoneBalloon.Common.Helper(_dbcontext, _memoryCache);
-                string env = _appSettings.ENVIRONMENT;
-                if (env != "development")
-                {
-                    envcpath = AppDomain.CurrentDomain.BaseDirectory;
-                }
-                try
-                {
-                    Task.Run(async () =>
-                    {
-                        user = await helper.GetLoggedUser(HttpContext);
-                        if (user != null)
-                        {
-                            username = user.Name;
-                        }
-                        else
-                        {
-                            await Task.Run(() =>
-                            {
-                                return Unauthorized("You are not authorized to access this resource.");
-                            });
-                        }
-                        jwtToken = await helper.GetToken(HttpContext);
-                        var gid = jwtToken.Claims.Where(c => c.Type == "groupId").Select(c => c.Value).FirstOrDefault();
-                        bool groupExist = long.TryParse(gid, out groupId);
-                        sessionData = helper.getsession(HttpContext);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    objerr.WriteErrorToText(ex);                   
-                }
+                envcpath = AppDomain.CurrentDomain.BaseDirectory;
             }
-            #endregion
+            // Auth is handled in each action method — no constructor DB access needed
         }
 
         #region UploadFile API
         [Authorize]
         [HttpPost("UploadFile")]
+        [RequestSizeLimit(52428800)] // 50 MB
+        [RequestFormLimits(MultipartBodyLengthLimit = 52428800)]
         public async Task<IActionResult> UploadFile([FromForm] List<IFormFile> files, [FromForm] string sessionUserId, [FromForm] AllinoneBalloon.Models.Settings settings)
         {
             using var context = _dbcontext.CreateDbContext();
@@ -296,7 +267,7 @@ namespace AllinoneBalloon.Controllers
                 {
                     Directory.CreateDirectory(workingDir);
                 }
-                string samplePath = System.IO.Path.Combine(clientPath, "sample");
+                string samplePath = System.IO.Path.Combine(workingDir, "sample");
                 samplePath = helper.AddTrailingSlash(samplePath);
                 if (!Directory.Exists(samplePath))
                 {
@@ -305,22 +276,26 @@ namespace AllinoneBalloon.Controllers
                 #endregion
 
                 #region User Authentication
+                jwtToken = await helper.GetToken(HttpContext);
                 user = await helper.GetLoggedUser(HttpContext);
-                if (user != null)
+                if (user == null)
                 {
-                    username = user.Name;
-                }
-                else
-                {
-                    await Task.Run(() =>
+                    // Fallback: get user from JWT claims when refresh token expired
+                    var nameId = jwtToken?.Claims?.Where(c => c.Type == "unique_name" || c.Type == System.Security.Claims.ClaimTypes.Name).Select(c => c.Value).FirstOrDefault();
+                    if (!string.IsNullOrEmpty(nameId))
                     {
-                        return Unauthorized("You are not authorized to access this resource.");
-                    });
+                        var userId = long.Parse(nameId);
+                        user = context.Users.Find(userId);
+                    }
+                    if (user == null)
+                    {
+                        return Unauthorized("Your session has expired. Please log out and log in again.");
+                    }
                 }
+                username = user.Name;
                 #endregion
 
-                #region User Group 
-                jwtToken = await helper.GetToken(HttpContext);
+                #region User Group
                 var gid = jwtToken.Claims.Where(c => c.Type == "groupId").Select(c => c.Value).FirstOrDefault();
                 bool groupExist = long.TryParse(gid, out groupId);
                 sourceDir = System.IO.Path.Combine(sourceDir, groupId.ToString());

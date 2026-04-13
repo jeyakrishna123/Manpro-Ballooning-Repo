@@ -1447,6 +1447,9 @@ export default function Canvas({ stageRef }) {
                 if (selectedRegion === "Selected Region" || selectedRegion === "Unselected Region") {
                     if (config.console)
                         console.log("new region ", newRegion)
+                    // Remove the selection rectangle from display while API processes
+                    const balloonedOnly = annotations.filter(a => a.isballooned === true);
+                    useStore.setState({ drawingRegions: balloonedOnly, balloonRegions: balloonedOnly });
                     selectedRegionProcess(originalRegions);
                 }
                 if (selectedRegion === "Spl") {
@@ -1845,12 +1848,12 @@ export default function Canvas({ stageRef }) {
 
     let createshape = annotationsToDraw.map(a => {
         return parseInt(a.Balloon);
-    }).filter(a => a !== '');
+    }).filter(a => !isNaN(a));
     createshape = [...new Set(createshape)];
 
     let menushape = annotationsToDraw.map(a => {
         return parseInt(a.Balloon);
-    }).filter(a => a !== '');
+    }).filter(a => !isNaN(a));
     menushape = [...new Set(menushape)];
 
     let measurementshape = annotationsToDraw.map(a => {

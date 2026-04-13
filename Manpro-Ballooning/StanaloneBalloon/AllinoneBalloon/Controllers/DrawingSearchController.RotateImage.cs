@@ -58,7 +58,13 @@ namespace AllinoneBalloon.Controllers
             }
             await helper.RotateImagefile(ImageFile, rotation);
             helper.scaleImage(partial_image, ImageFile, 0, true, objerr);
-            System.Drawing.Image.FromFile(ImageFile).Save(clientImg, System.Drawing.Imaging.ImageFormat.Png);
+            using (var rotatedImg = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(ImageFile))
+            {
+                using (var fs = new FileStream(clientImg, FileMode.Create))
+                {
+                    rotatedImg.Save(fs, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+                }
+            }
             List<object> returnObject = new List<object>();
             returnObject.Add(desFile);
             return await Task.Run(() =>

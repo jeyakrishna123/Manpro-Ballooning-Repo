@@ -17,7 +17,21 @@ namespace AllinoneBalloon.Common
             var nxtcount = lstoCRResults.Count();
             if (nxtcount > 0)
             {
-                dBalloonid = lstoCRResults.Where(r => r.Balloon != null).Max(r => Convert.ToInt64(r.Balloon.Substring(0, r.Balloon.IndexOf('.') > 0 ? r.Balloon.IndexOf('.') : r.Balloon.Length))) + 1;
+                var validBalloons = lstoCRResults
+                    .Where(r => !string.IsNullOrWhiteSpace(r.Balloon))
+                    .Select(r =>
+                    {
+                        string numPart = r.Balloon.Contains('.')
+                            ? r.Balloon.Substring(0, r.Balloon.IndexOf('.'))
+                            : r.Balloon;
+                        long val;
+                        return long.TryParse(numPart, out val) ? val : 0;
+                    })
+                    .Where(v => v > 0);
+                if (validBalloons.Any())
+                {
+                    dBalloonid = validBalloons.Max() + 1;
+                }
             }
             List<AllinoneBalloon.Entities.Common.OCRResults> request = searchForm.originalRegions.Where(x1 => x1.isballooned == false).ToList();
             foreach (var obj in request)

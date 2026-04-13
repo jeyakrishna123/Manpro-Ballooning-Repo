@@ -6,7 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenCvSharp;
-using System.Drawing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Formats.Png;
 using System.Text;
 using System.Text.RegularExpressions;
 using Tesseract;
@@ -146,17 +149,15 @@ namespace AllinoneBalloon.Controllers
                             s_y = obj.y;
                             s_w = obj.width;
                             s_h = obj.height;
-                            System.Drawing.RectangleF rectElipse = new System.Drawing.RectangleF(obj.x, obj.y, obj.width, obj.height);
+                            SixLabors.ImageSharp.RectangleF rectElipse = new SixLabors.ImageSharp.RectangleF(obj.x, obj.y, obj.width, obj.height);
                             lstCircle.Add(new Circle_AutoBalloon { Bounds = rectElipse });
                             string OriginalImage = OrgPath;
-                            System.Drawing.Rectangle rectElipse1 = new System.Drawing.Rectangle(obj.x, obj.y, obj.width, obj.height);
-                            Bitmap originalImage = new Bitmap(SelImageFile);
-                            Bitmap croppedImage = helper.CropImage(originalImage, rectElipse1);
-                            // Bitmap newImage = ChangeResolution(croppedImage, 200.0f);
+                            var cropRect = new SixLabors.ImageSharp.Rectangle(obj.x, obj.y, obj.width, obj.height);
+                            using var originalImage = SixLabors.ImageSharp.Image.Load<Rgba32>(SelImageFile);
+                            using var croppedImage = originalImage.Clone(x => x.Crop(cropRect));
                             FileInfo cfi = new FileInfo(SelImageFile);
                             string cropname = Path.Combine(Path.GetTempPath(), "cropname_" + Guid.NewGuid().ToString() + cfi.Extension);
-                            // Save or use the new image
-                            croppedImage.Save(cropname);
+                            croppedImage.Save(cropname, new PngEncoder());
                             temp = cropname;
                         }
                     }
@@ -165,7 +166,7 @@ namespace AllinoneBalloon.Controllers
                         List<AllinoneBalloon.Entities.Common.OCRResults> request = searchForm.originalRegions.Where(x1 => x1.isballooned == false).ToList();
                         foreach (var obj in request)
                         {
-                            System.Drawing.RectangleF rectElipse = new System.Drawing.RectangleF(obj.x, obj.y, obj.width, obj.height);
+                            SixLabors.ImageSharp.RectangleF rectElipse = new SixLabors.ImageSharp.RectangleF(obj.x, obj.y, obj.width, obj.height);
                             lstCircle.Add(new Circle_AutoBalloon { Bounds = rectElipse });
                         }
                     }
@@ -173,11 +174,9 @@ namespace AllinoneBalloon.Controllers
                     OpenCvSharp.Mat image = null;
                     if (searchForm.selectedRegion == "Full Image" || searchForm.selectedRegion == "Selected Region" || searchForm.selectedRegion == "Unselected Region")
                     {
-                        using (var dimImg = System.Drawing.Image.FromFile(ImageFile))
-                        {
-                            imagewidth = dimImg.Width;
-                            imageheight = dimImg.Height;
-                        }
+                        var dimInfo = SixLabors.ImageSharp.Image.Identify(ImageFile);
+                        imagewidth = dimInfo.Width;
+                        imageheight = dimInfo.Height;
                     }
                     // image Mat will be loaded on-demand only if Tesseract fallback is needed
                     if (searchForm.selectedRegion != "Unselected Region")
@@ -202,7 +201,7 @@ namespace AllinoneBalloon.Controllers
                     List<AllinoneBalloon.Entities.Common.AG_OCR> ag_ocrresults = new List<AllinoneBalloon.Entities.Common.AG_OCR>();
                     List<AllinoneBalloon.Entities.Common.Rect> rects = new List<AllinoneBalloon.Entities.Common.Rect>();
                     int agocr = 0;
-                    string customLanguagePath = new DirectoryInfo(Environment.CurrentDirectory).FullName + @"\tessdata";
+                    string customLanguagePath = Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).FullName, "tessdata");
                     int maximum = 32767;
 
                     if ((origin.scale < 1 || origin.scale == 1 && imagewidth > maximum) && (imagewidth > maximum || imageheight > maximum) && searchForm.selectedRegion == "Full Image")
@@ -253,10 +252,8 @@ namespace AllinoneBalloon.Controllers
                                     tileIndex++;
                                     OpenCvSharp.Rect rect = new OpenCvSharp.Rect(x, 0, width, height);
                                     OpenCvSharp.Mat tile = new OpenCvSharp.Mat(largeImage, rect);
-                                    Bitmap bitmap = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(tile);
-                                    FileInfo tfi = new FileInfo(temp);
                                     string tempFile = Path.Combine(Path.GetTempPath(), "largeimage_" + Guid.NewGuid().ToString() + ".png");
-                                    bitmap.Save(tempFile, System.Drawing.Imaging.ImageFormat.Png);
+                                    Cv2.ImWrite(tempFile, tile);
 
                                     int tileOffsetX = (tileIndex == 1) ? 0 : x;
                                     int capturedIndex = tileIndex;
@@ -301,13 +298,9 @@ namespace AllinoneBalloon.Controllers
                                     OpenCvSharp.Rect rect = new OpenCvSharp.Rect(x, 0, width, height);
                                     // y += tileHeight;
                                     OpenCvSharp.Mat tile = new OpenCvSharp.Mat(largeImage, rect);
-                                    // Convert Mat to Bitmap
-                                    Bitmap bitmap = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(tile);
-                                    FileInfo tfi = new FileInfo(temp);
-                                    // Save the Bitmap as a temporary file
-                                    string tempFile = Path.Combine(Path.GetTempPath(), "largeimage_" + Guid.NewGuid().ToString() + tfi.Extension);
-
-                                    bitmap.Save(tempFile, System.Drawing.Imaging.ImageFormat.Png);
+                                    // Save tile directly via OpenCV (cross-platform)
+                                    string tempFile = Path.Combine(Path.GetTempPath(), "largeimage_" + Guid.NewGuid().ToString() + ".png");
+                                    Cv2.ImWrite(tempFile, tile);
 
                                     using (var imgnew = Pix.LoadFromFile(tempFile)) // Preprocess the tile for OCR
                                     {
@@ -468,7 +461,8 @@ namespace AllinoneBalloon.Controllers
                                         .Replace("(Z)", "¡")
                                         ;
                                     }
-                                    if (text.StartsWith("I"))
+                                    // Strip leading "I" only when followed by a digit (OCR artifact)
+                                    if (text.StartsWith("I") && text.Length > 1 && char.IsDigit(text[1]))
                                     {
                                         text = text.Substring(1);
                                     }
@@ -775,11 +769,12 @@ namespace AllinoneBalloon.Controllers
                                         {
                                             continue;
                                         }
-                                        // Exclude title block area: bottom 5% full width + bottom 15% right 40%
+                                        // Exclude title block area: bottom strip + bottom-right block
+                                        // Use smaller percentages to avoid cutting off real annotations near edges
                                         {
-                                            int btmStrip = Math.Max(100, (int)(imageheight * 0.05));
-                                            int titleH = Math.Max(350, (int)(imageheight * 0.15));
-                                            int titleX = (int)(imagewidth * 0.60);
+                                            int btmStrip = Math.Max(80, (int)(imageheight * 0.03));
+                                            int titleH = Math.Max(250, (int)(imageheight * 0.12));
+                                            int titleX = (int)(imagewidth * 0.65);
                                             bool inBtmStrip = i.Y > imageheight - btmStrip;
                                             bool inTitleBlk = i.Y > imageheight - titleH && i.X > titleX;
                                             if (inBtmStrip || inTitleBlk)
@@ -792,8 +787,16 @@ namespace AllinoneBalloon.Controllers
                                             var eBox = lstCircle.Last();
                                             float eY1axis = eBox.Bounds.Y;
                                             float eX1axis = eBox.Bounds.X;
-                                            float eX2axis = eBox.Bounds.Width;
-                                            float eY2axis = eBox.Bounds.Height;
+                                            float eX2axis = eBox.Bounds.Width + eX1axis;
+                                            float eY2axis = eBox.Bounds.Height + eY1axis;
+                                            int ix = i.X;
+                                            int iy = i.Y;
+                                            int ix2 = i.X + i.W;
+                                            int iy2 = i.Y + i.H;
+                                            if ((ix < eX2axis && ix > eX1axis || ix2 < eX2axis && ix2 > eX1axis) && (iy >= eY1axis && iy <= eY2axis || iy2 <= eY1axis && iy2 >= eY2axis))
+                                            {
+                                                continue;
+                                            }
                                         }
                                         i.isBallooned = true;
                                         i.Text = txtval;
@@ -984,11 +987,9 @@ namespace AllinoneBalloon.Controllers
                             if (usePaddleOcr)
                             {
                                 // PaddleOCR: just get dimensions quickly
-                                using (var dimImg = System.Drawing.Image.FromFile(temp))
-                                {
-                                    processedImgW = dimImg.Width;
-                                    processedImgH = dimImg.Height;
-                                }
+                                var selDimInfo = SixLabors.ImageSharp.Image.Identify(temp);
+                                processedImgW = selDimInfo.Width;
+                                processedImgH = selDimInfo.Height;
                             }
                             else
                             {
@@ -1088,9 +1089,11 @@ namespace AllinoneBalloon.Controllers
                                             kk++;
 
                                             int cont = ag_ocrresults.Count();
-                                            // Resolution-aware grouping: scale gap threshold with image size
-                                            int gapThresholdX = searchForm.accurateGDT ? Math.Max(80, imagewidth / 40) : Math.Max(40, imagewidth / 80);
-                                            int gapThresholdY = searchForm.accurateGDT ? Math.Max(80, imageheight / 40) : Math.Max(40, imageheight / 80);
+                                            // Resolution-aware grouping: use text height as base unit (more reliable than image width)
+                                            // Words on the same annotation line are typically within 2-3x their own height apart
+                                            int textBasedGap = Math.Max(hh * 3, 40);
+                                            int gapThresholdX = searchForm.accurateGDT ? Math.Max(textBasedGap, Math.Max(80, imagewidth / 50)) : Math.Max(textBasedGap / 2, Math.Max(40, imagewidth / 80));
+                                            int gapThresholdY = searchForm.accurateGDT ? Math.Max(80, imageheight / 50) : Math.Max(40, imageheight / 80);
                                             if (cont == 0)
                                             {
                                                 ag_ocrresults.Add(new AllinoneBalloon.Entities.Common.AG_OCR { GroupID = agocr, cx = cx, nx = nx, cy = cy, x = xx, y = yy, w = ww, h = hh, text = regionText });
@@ -2059,7 +2062,21 @@ namespace AllinoneBalloon.Controllers
                     long ballooncid = 1;
                     if (lstoCRResults.Count > 0)
                     {
-                        ballooncid = lstoCRResults.Where(r => r.Balloon != null).Max(r => Convert.ToInt64(r.Balloon.Substring(0, r.Balloon.IndexOf('.') > 0 ? r.Balloon.IndexOf('.') : r.Balloon.Length))) + 1;
+                        var validBalloons = lstoCRResults
+                            .Where(r => !string.IsNullOrWhiteSpace(r.Balloon))
+                            .Select(r =>
+                            {
+                                string numPart = r.Balloon.Contains('.')
+                                    ? r.Balloon.Substring(0, r.Balloon.IndexOf('.'))
+                                    : r.Balloon;
+                                long val;
+                                return long.TryParse(numPart, out val) ? val : 0;
+                            })
+                            .Where(v => v > 0);
+                        if (validBalloons.Any())
+                        {
+                            ballooncid = validBalloons.Max() + 1;
+                        }
                     }
                     bool surface_finish = false;
                     bool isplmin = false;

@@ -77,8 +77,23 @@
                 System.IO.DirectoryInfo deletableClientImage = new System.IO.DirectoryInfo(clientPath);
                 foreach (System.IO.FileInfo f in deletableClientImage.GetFiles())
                 {
-                    try { f.Delete(); }
-                    catch (IOException) { /* skip locked files */ }
+                    const int maxRetries = 5;
+                    for (int attempt = 0; attempt < maxRetries; attempt++)
+                    {
+                        try
+                        {
+                            f.Delete();
+                            break;
+                        }
+                        catch (IOException) when (attempt < maxRetries - 1)
+                        {
+                            System.Threading.Thread.Sleep(200 * (attempt + 1));
+                        }
+                        catch (IOException)
+                        {
+                            Console.WriteLine($"Could not delete locked file after retries: {f.FullName}");
+                        }
+                    }
                 }
                 return true;
             });

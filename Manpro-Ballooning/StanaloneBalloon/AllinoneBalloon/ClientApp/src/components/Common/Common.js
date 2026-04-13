@@ -78,7 +78,13 @@ function sanitizeInput(input) {
 export function CatchError(error) {
     useStore.setState({ isLoading: false });
     if (!error.response) {
-        showAlert("Error", "Unable to connect to the server. Please check your network connection.");
+        if (error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED') {
+            showAlert("Server Unavailable", "Unable to connect to the backend server. Please make sure the server is running.");
+        } else if (error.code === 'ECONNABORTED') {
+            showAlert("Request Timeout", "The request took too long to respond. Please try again.");
+        } else {
+            showAlert("Error", error.message || "An unexpected error occurred.");
+        }
         return;
     }
     if (error.response.status === 401) {
@@ -1157,12 +1163,10 @@ export const selectedSPLRegionProcess = (newAnnotation) => {
                     let dummy = cpl;
      
                     if (dummy[0].Spec === "") {
-                        //alert("The OCR Unable to extract Balloon details on this SPl region.");
-                        
                         Swal.fire({
                             title: 'Oops!',
                             icon: "",
-                            html: "The OCR Unable to extract Balloon details on this SPl region.",
+                            html: "The OCR was unable to extract Balloon details on this SPL region. The balloon has been placed — please update the Spec manually.",
                             showConfirmButton: true
                         }).then((r) => {
                             if (r.isConfirmed) {
@@ -1172,18 +1176,9 @@ export const selectedSPLRegionProcess = (newAnnotation) => {
                                     if (scrollElement !== null) {
                                         scrollElement.scrollLeft = dstate.scrollPosition;
                                     }
-
                                 }, 500);
                             }
                         });
-                        newrects.map((item) => {
-                            if (parseInt(item.Balloon) === parseInt(dummy[0].Balloon)) {
-                                item.isballooned = false;
-                                item.isDeleted = false;
-                                return item;
-                            }
-                            return false;
-                        }).filter((item) => item !== false);
                         useStore.setState({ selectedBalloon: dummy[0].Balloon });
                     }
                     newrects = rearrangedPageBalloon(newrects);
@@ -1742,14 +1737,16 @@ export const selectedRegionProcess = (newAnnotation, skipConflictCheck = false) 
                     useStore.setState({
                         originalRegions: newrects,
                         draft: newrects,
-                        intBubble: 1
+                        intBubble: 1,
+                        selectedRegion: ""
                     });
                         const state1 = useStore.getState();
                         let newDraw = newBalloonPosition(newrects, state1);
                         useStore.setState({
                             drawingRegions: newDraw,
                             balloonRegions: newDraw,
-                            intBubble: 1
+                            intBubble: 1,
+                            selectedRegion: ""
                         });
                         // Success notification
                         Swal.fire({
@@ -1767,6 +1764,7 @@ export const selectedRegionProcess = (newAnnotation, skipConflictCheck = false) 
                             draft: [],
                             drawingRegions: [],
                             balloonRegions: [],
+                            selectedRegion: ""
                         });
                     }
 
@@ -1777,6 +1775,7 @@ export const selectedRegionProcess = (newAnnotation, skipConflictCheck = false) 
                 useStore.setState({
                     originalRegions: prev,
                     draft: state.draft,
+                    selectedRegion: ""
                 })
                 let nstate = useStore.getState();
                 const nprev = nstate.originalRegions.filter(r => r.isballooned === true);
@@ -1789,7 +1788,19 @@ export const selectedRegionProcess = (newAnnotation, skipConflictCheck = false) 
                 useStore.setState({ isLoading: false });
             }).catch(error => {
                 console.log(error);
-                useStore.setState({ isLoading: false });
+                let state = useStore.getState();
+                const prev = state.originalRegions.filter(r => r.isballooned === true);
+                useStore.setState({
+                    originalRegions: prev,
+                    draft: prev,
+                    selectedRegion: "",
+                    isLoading: false
+                });
+                let prevDraw = newBalloonPosition(prev, useStore.getState());
+                useStore.setState({
+                    drawingRegions: prevDraw,
+                    balloonRegions: prevDraw,
+                });
             })
         , 100);
     return false;
