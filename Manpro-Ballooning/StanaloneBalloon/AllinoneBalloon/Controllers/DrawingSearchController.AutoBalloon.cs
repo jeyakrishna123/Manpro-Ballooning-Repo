@@ -94,15 +94,15 @@ namespace AllinoneBalloon.Controllers
                     int pageNo = searchForm.pageNo;
                     int totalPage = searchForm.totalPage;
                     string env = _appSettings.ENVIRONMENT;
+                    if (env != "development")
+                    {
+                        envcpath = AppDomain.CurrentDomain.BaseDirectory;
+                    }
                     string finame = string.Empty;
                     FileInfo fi = new FileInfo(dtFiles);
                     finame = dtFiles;
                     string desFile = fi.Name;
                     string OrgPath = dtFiles;
-                    if (env != "development")
-                    {
-                    
-                    }
                     int ItemView = searchForm.ItemView;
                     List<AllinoneBalloon.Entities.Common.OCRResults> lstoCRResults = new List<AllinoneBalloon.Entities.Common.OCRResults>();
                     string Fname = fi.Name;
@@ -201,7 +201,7 @@ namespace AllinoneBalloon.Controllers
                     List<AllinoneBalloon.Entities.Common.AG_OCR> ag_ocrresults = new List<AllinoneBalloon.Entities.Common.AG_OCR>();
                     List<AllinoneBalloon.Entities.Common.Rect> rects = new List<AllinoneBalloon.Entities.Common.Rect>();
                     int agocr = 0;
-                    string customLanguagePath = Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).FullName, "tessdata");
+                    string customLanguagePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata");
                     int maximum = 32767;
 
                     if ((origin.scale < 1 || origin.scale == 1 && imagewidth > maximum) && (imagewidth > maximum || imageheight > maximum) && searchForm.selectedRegion == "Full Image")
@@ -772,9 +772,9 @@ namespace AllinoneBalloon.Controllers
                                         // Exclude title block area: bottom strip + bottom-right block
                                         // Use smaller percentages to avoid cutting off real annotations near edges
                                         {
-                                            int btmStrip = Math.Max(80, (int)(imageheight * 0.03));
-                                            int titleH = Math.Max(250, (int)(imageheight * 0.12));
-                                            int titleX = (int)(imagewidth * 0.65);
+                                            int btmStrip = Math.Max(350, (int)(imageheight * 0.15));
+                                            int titleH = Math.Max(500, (int)(imageheight * 0.20));
+                                            int titleX = (int)(imagewidth * 0.50);
                                             bool inBtmStrip = i.Y > imageheight - btmStrip;
                                             bool inTitleBlk = i.Y > imageheight - titleH && i.X > titleX;
                                             if (inBtmStrip || inTitleBlk)
@@ -1816,10 +1816,11 @@ namespace AllinoneBalloon.Controllers
                                                         FilterLog.AppendLine($"EXCLUDED(infoBox): '{i.Text}' at ({i.X},{i.Y}) below finalyaxis={finalyaxis}");
                                                         continue;
                                                     }
-                                                    // Exclude title block: bottom 5% full width + bottom 15% right 40%
-                                                    int bottomStrip = Math.Max(100, (int)(imageheight * 0.05));
-                                                    int titleBlockHeight = Math.Max(350, (int)(imageheight * 0.15));
-                                                    int titleBlockX = (int)(imagewidth * 0.60);
+                                                    // Exclude title block: bottom 15% full width (title blocks typically span whole bottom)
+                                                    // + bottom 20% right 40% for companies with tall title blocks on the right
+                                                    int bottomStrip = Math.Max(350, (int)(imageheight * 0.15));
+                                                    int titleBlockHeight = Math.Max(500, (int)(imageheight * 0.20));
+                                                    int titleBlockX = (int)(imagewidth * 0.50);
                                                     bool inBottomStrip = i.Y > imageheight - bottomStrip;
                                                     bool inTitleBlock = i.Y > imageheight - titleBlockHeight && i.X > titleBlockX;
                                                     if (inBottomStrip || inTitleBlock)
@@ -2546,7 +2547,8 @@ namespace AllinoneBalloon.Controllers
                     System.IO.File.Delete(ImageFile);
 
                     // Remove duplicate/overlapping balloons
-                    int dedupThreshold = 30;
+                    // Scale threshold with image size: larger images need larger dedup distance
+                    int dedupThreshold = Math.Max(60, imagewidth / 100);
                     var dedupedResults = new List<AllinoneBalloon.Entities.Common.OCRResults>();
                     foreach (var balloon in lstoCRResults)
                     {

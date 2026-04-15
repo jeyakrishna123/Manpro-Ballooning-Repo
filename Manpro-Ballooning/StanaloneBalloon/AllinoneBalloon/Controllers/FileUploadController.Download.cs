@@ -285,13 +285,7 @@ namespace AllinoneBalloon.Controllers
                         }
                     }
                     var bytes = await System.IO.File.ReadAllBytesAsync(zipPath);
-                    // Serve the zip file with custom headers
-                    // Add custom headers
-                    Response.Headers.Add("X-Custom-Header", "DownloadedImages");
-                    Response.Headers.Add("Content-Disposition", $"attachment; filename={zipName}");
-                    // Set response headers
-                    Response.ContentType = "application/zip";
-                    return File(bytes, "application/zip", zipName);                    
+                    return File(bytes, "application/zip", zipName);
                 }
                 finally
                 {

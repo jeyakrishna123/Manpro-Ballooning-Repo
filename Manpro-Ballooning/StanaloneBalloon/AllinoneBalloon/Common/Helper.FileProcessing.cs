@@ -30,7 +30,8 @@ namespace AllinoneBalloon.Common
 
         public async Task<List<string>> StandaloneFileCopy(List<IFormFile> files, List<string> addedfiles, string workingDir, string clientPath, string sourceDir, AllinoneBalloon.Models.Settings settings)
         {
-            var ext = new List<string> { ".png", ".jpeg", ".jpg" };
+            var imgExt = new List<string> { ".png", ".jpeg", ".jpg" };
+            var pdfExt = new List<string> { ".pdf" };
             int i = 1;
             string Fname = settings.DrawingNo.Trim().ToUpper().ToString() + "-" + settings.RevNo.Trim().ToUpper().ToString();
             string backupDir = System.IO.Path.Combine(sourceDir, Fname);
@@ -48,15 +49,18 @@ namespace AllinoneBalloon.Common
                 {
                     FileInfo fi = new FileInfo(file.FileName);
                     string extension = fi.Extension.ToLower();
+                    // Normalize .jpeg → .jpg for consistent naming
+                    string normalizedExt = extension == ".jpeg" ? ".jpg" : extension;
 
-                    string FileName = string.Format("{0}-{1:000}{2}", Fname, 1, extension);
-                    if (ext.Contains(extension))
+                    // Use file index i for multi-file uploads so each gets unique page number
+                    string FileName = string.Format("{0}-{1:000}{2}", Fname, i, normalizedExt);
+                    if (imgExt.Contains(extension))
                     {
                         int count = 1;
                         var CheckfilePath = System.IO.Path.Combine(workingDir, FileName);
                         while (System.IO.File.Exists(CheckfilePath))
                         {
-                            FileName = string.Format("{0}-{1:000}({2}){3}", Fname, 1, count++, extension);
+                            FileName = string.Format("{0}-{1:000}({2}){3}", Fname, i, count++, normalizedExt);
                             CheckfilePath = System.IO.Path.Combine(workingDir, FileName);
                         }
                         var filePath = System.IO.Path.Combine(workingDir, FileName);
@@ -73,15 +77,20 @@ namespace AllinoneBalloon.Common
                             CopyFileSafe(filePath, BackupFile)
                         );
                     }
-                    else
+                    else if (pdfExt.Contains(extension))
                     {
-                        // pdf process
+                        // PDF: convert each page to PNG via Ghostscript.NET
                         var filePath = System.IO.Path.Combine(workingDir, file.FileName);
                         using (var stream = new FileStream(filePath, FileMode.Create))
                         {
                             await file.CopyToAsync(stream);
                         }
                         List<string> pdfPath = pdftoImage(filePath, workingDir, settings);
+                        if (pdfPath == null || pdfPath.Count == 0)
+                        {
+                            // PDF conversion failed — skip this file (returns no pages)
+                            continue;
+                        }
                         foreach (var f in pdfPath)
                         {
                             addedfiles.Add(f);
@@ -94,6 +103,7 @@ namespace AllinoneBalloon.Common
                             );
                         }
                     }
+                    // Unknown extension — silently skip; controller already validated extensions
                 }
                 i++;
             }

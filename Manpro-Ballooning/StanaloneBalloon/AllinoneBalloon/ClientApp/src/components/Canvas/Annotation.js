@@ -61,11 +61,8 @@ const Annotation = ({ n, movecircle, shapeProps, isSelected, onSelect, onDblClic
     let desiredBalloon = 1;
     let desiredRadius = 1.3;
     let fontSizeScale = 0;
-    if (fontScale > 0 || fontScale < 0) {
-        fontSizeScale = fontScale / 100
-    }
-    if (fontScale === 0) {
-        fontSizeScale = 0
+    if (fontScale !== 0) {
+        fontSizeScale = fontScale / 10;
     }
 
     let scale = 1;
@@ -492,7 +489,7 @@ const Annotation = ({ n, movecircle, shapeProps, isSelected, onSelect, onDblClic
                                         stroke={isDark ? "#ffffff" : "black"}
                                         fill={isDark ? "#ffffff" : "black"}
                                         fontFamily="Calibri"
-                                        fontSize={textFontSize / desiredBalloon}
+                                        fontSize={Math.max(8, textFontSize / desiredBalloon)}
                                         background={"black"}
                                         strokeWidth={.51}
                                         draggable={false}
@@ -538,7 +535,7 @@ const Annotation = ({ n, movecircle, shapeProps, isSelected, onSelect, onDblClic
                                         stroke={isDark ? "#ffffff" : "black"}
                                         fill={isDark ? "#ffffff" : "black"}
                                         fontFamily="Calibri"
-                                        fontSize={textFontSize / desiredBalloon}
+                                        fontSize={Math.max(8, textFontSize / desiredBalloon)}
                                         background={"black"}
                                         strokeWidth={.51}
                                         draggable={false}
@@ -584,7 +581,7 @@ const Annotation = ({ n, movecircle, shapeProps, isSelected, onSelect, onDblClic
                                         stroke={isDark ? "#ffffff" : "black"}
                                         fill={isDark ? "#ffffff" : "black"}
                                         fontFamily="Calibri"
-                                        fontSize={textFontSize / desiredBalloon}
+                                        fontSize={Math.max(8, textFontSize / desiredBalloon)}
                                         background={"black"}
                                         strokeWidth={.51}
                                         draggable={false}
@@ -630,7 +627,7 @@ const Annotation = ({ n, movecircle, shapeProps, isSelected, onSelect, onDblClic
                                         stroke={isDark ? "#ffffff" : "black"}
                                         fill={isDark ? "#ffffff" : "black"}
                                         fontFamily="Calibri"
-                                        fontSize={textFontSize / desiredBalloon}
+                                        fontSize={Math.max(8, textFontSize / desiredBalloon)}
                                         background={"black"}
                                         strokeWidth={.51}
                                         draggable={false}

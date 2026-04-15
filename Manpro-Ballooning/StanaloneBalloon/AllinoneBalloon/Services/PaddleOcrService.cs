@@ -14,7 +14,7 @@ namespace AllinoneBalloon.Services
         private readonly HttpClient _httpClient;
         private readonly string _serviceUrl;
         private readonly ErrorLog _errorLog;
-        private const int MAX_OCR_DIMENSION = 8000; // Max dimension to send to OCR (increased for better small-text detection)
+        private const int MAX_OCR_DIMENSION = 1600; // Max dimension to send to OCR (sweet spot: high enough for small text detection, low enough to avoid crashes)
         private const int MAX_OCR_DIMENSION_FAST = 1280; // Balanced dimension for fast mode
         private const float MIN_CONFIDENCE = 0.45f; // Minimum confidence to accept a word
 
@@ -45,7 +45,42 @@ namespace AllinoneBalloon.Services
 
         public async Task<List<OcrWordResult>> RecognizeWordsAsync(string imagePath)
         {
-            return await ProcessImageAsync(imagePath, MAX_OCR_DIMENSION, $"{_serviceUrl}/ocr", "PaddleOCR");
+            // Progressive retry: if primary size fails/crashes, wait for service then try smaller
+            int[] sizeLadder = { MAX_OCR_DIMENSION, 1200, 960 };
+            List<OcrWordResult> results = null;
+            for (int i = 0; i < sizeLadder.Length; i++)
+            {
+                results = await ProcessImageAsync(imagePath, sizeLadder[i], $"{_serviceUrl}/ocr", $"PaddleOCR@{sizeLadder[i]}");
+                if (results != null && results.Count >= 10)
+                {
+                    return results;
+                }
+                if (results == null || results.Count < 5)
+                {
+                    _errorLog.WriteErrorLog($"PaddleOCR: {sizeLadder[i]}px returned {results?.Count ?? 0} words, waiting for service to recover");
+                    // Wait for PaddleOCR auto-restart + verify health before next attempt
+                    await WaitForPaddleOcrHealthAsync(TimeSpan.FromSeconds(15));
+                    continue;
+                }
+                return results;
+            }
+            return results ?? new List<OcrWordResult>();
+        }
+
+        private async Task WaitForPaddleOcrHealthAsync(TimeSpan maxWait)
+        {
+            var deadline = DateTime.UtcNow.Add(maxWait);
+            while (DateTime.UtcNow < deadline)
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    var response = await _httpClient.GetAsync($"{_serviceUrl}/health", cts.Token);
+                    if (response.IsSuccessStatusCode) return;
+                }
+                catch { /* service still restarting */ }
+                await Task.Delay(1000);
+            }
         }
 
         public async Task<List<OcrWordResult>> RecognizeWordsFastAsync(string imagePath)

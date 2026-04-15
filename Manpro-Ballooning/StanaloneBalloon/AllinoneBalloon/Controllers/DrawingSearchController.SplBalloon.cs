@@ -91,7 +91,7 @@ namespace AllinoneBalloon.Controllers
                         croppedImage.Save(cropname, new PngEncoder());
                         temp = cropname;
 
-                        string customLanguagePath = Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).FullName, "tessdata");
+                        string customLanguagePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata");
                         //_ocr = new Emgu.CV.OCR.Tesseract(customLanguagePath, "IMSsym1", Emgu.CV.OCR.OcrEngineMode.Default);
                         string ocrtext = string.Empty;
                         bool usedPaddleOcr = false;

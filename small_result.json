@@ -1,0 +1,1 @@
+{"words":[{"text":"Hello 123.45 World","x":17,"y":49,"width":95,"height":15,"confidence":0.9957},{"text":"R0.84 46.91 0.08","x":17,"y":99,"width":81,"height":15,"confidence":0.9593}],"image_width":800,"image_height":400,"engine":"paddleocr-v4","success":true,"error_message":null}

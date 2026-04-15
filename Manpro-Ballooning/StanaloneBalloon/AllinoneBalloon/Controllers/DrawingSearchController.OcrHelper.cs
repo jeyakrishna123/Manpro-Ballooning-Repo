@@ -116,13 +116,20 @@ namespace AllinoneBalloon.Controllers
                 int zoneRight = anchor.X + anchor.Width;
                 int zoneBottom = anchor.Y + anchor.Height;
 
-                // Fixed proximity: only absorb text very close to the anchor (same line or adjacent)
-                int proximityY = anchor.Height * 2;
-                int proximityX = 50;
+                // Detect if anchor is inside a paragraph (wide text block like CONFIDENTIAL notice)
+                // Paragraphs have many words within the same horizontal band
+                int wordsNearAnchor = words.Count(w =>
+                    w != anchor &&
+                    Math.Abs((w.Y + w.Height / 2) - (anchor.Y + anchor.Height / 2)) < anchor.Height * 2 &&
+                    w.X > anchor.X && w.X < anchor.X + imageWidth / 3);
+                bool isParagraph = wordsNearAnchor >= 5;  // 5+ nearby words = paragraph context
 
-                // Max zone size: 5x anchor dimensions to prevent runaway expansion
-                int maxZoneWidth = Math.Max(anchor.Width * 5, imageWidth / 2);
-                int maxZoneHeight = Math.Max(anchor.Height * 5, 200);
+                // Paragraph: allow wider+taller zone to cover multi-line legal notices
+                // Non-paragraph: tight zone to avoid swallowing dimensions
+                int proximityY = isParagraph ? anchor.Height * 2 : anchor.Height;
+                int proximityX = isParagraph ? 100 : 30;
+                int maxZoneWidth = isParagraph ? imageWidth : Math.Max(anchor.Width * 3, imageWidth / 3);
+                int maxZoneHeight = isParagraph ? Math.Max(anchor.Height * 8, 400) : Math.Max(anchor.Height * 3, 120);
 
                 // Expand zone to include nearby words (with size limit)
                 bool expanded = true;
@@ -267,6 +274,27 @@ namespace AllinoneBalloon.Controllers
                 // Skip trailing lowercase after count: "4X p"
                 if (System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d+[xX]\s+[a-z]$"))
                     continue;
+
+                // Skip paragraph-length text (legal notices, descriptions) — dimensions are short
+                // Engineering dimensions rarely exceed 20 chars (e.g., "Ø0.08 B A(M)" = 12)
+                // Multi-word sentences (40+ chars) are almost always paragraph content
+                if (text.Length > 30 && text.Count(c => c == ' ') >= 3)
+                    continue;
+
+                // Skip part labels that contain only letters (no digits/engineering symbols)
+                // e.g., "VALVE PLUG", "CAGE", "DETAIL E" - these are labels, not dimensions
+                string upperText = text.ToUpperInvariant();
+                string[] labelWords = { "VALVE", "CAGE", "PLUG", "DETAIL", "SECTION", "VIEW",
+                                        "PLATE", "COVER", "HOUSING", "SHAFT", "BEARING",
+                                        "GASKET", "SEAL", "O-RING", "BOLT", "NUT", "SCREW",
+                                        "WASHER", "PIN", "KEY", "RING", "BUSHING", "SPACER",
+                                        "BRACKET", "FLANGE", "FITTING", "CONNECTOR" };
+                if (!text.Any(char.IsDigit) && !text.Contains("Ø") && !text.Contains("R")
+                    && !text.Contains("±") && !text.Contains("°"))
+                {
+                    if (labelWords.Any(lw => upperText.Contains(lw)))
+                        continue;
+                }
 
                 filtered.Add(word);
             }

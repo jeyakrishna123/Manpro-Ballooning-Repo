@@ -263,6 +263,14 @@ export class Buttons extends Component {
 
     makeAutoballoon = (e) => {
         e.preventDefault();
+        // Concurrency guard: prevent double-click while a Process is in-flight
+        const precheck = useStore.getState();
+        if (precheck.isErrImage) {
+            return;
+        }
+        if (precheck.isLoading) {
+            return;
+        }
         useStore.setState({ selectedRegion: "Full Image" })
 
         const state = useStore.getState();
@@ -504,14 +512,21 @@ export class Buttons extends Component {
         };
         useStore.setState({ selectedRowIndex: null });
         console.log("AUTO BALLOON REQUEST - accurateGDT:", requestData.accurateGDT, requestData);
-       //return false; 
+       //return false;
+        // Save previous state so we can restore on failure
+        const prevOriginal = useStore.getState().originalRegions;
+        const prevDrawing = useStore.getState().drawingRegions;
+        const prevBalloon = useStore.getState().balloonRegions;
         useStore.setState({
              originalRegions: oldDraw,
             drawingRegions: [],
             balloonRegions: [], isLoading: true, loadingText: "Processing Auto Balloon..." })
-         
+
         makeAutoballoonApi(requestData)
             .then(r => {
+                if (!r || !r.data) {
+                    throw new Error("No response from server");
+                }
                 return r.data;
             })
             .then(r => {
@@ -704,19 +719,28 @@ export class Buttons extends Component {
                         });
 
                     }
-  
+
+                } else {
+                    // API returned empty — no balloons detected. Restore previous state.
+                    useStore.setState({
+                        originalRegions: prevOriginal,
+                        drawingRegions: prevDrawing,
+                        balloonRegions: prevBalloon,
+                        isLoading: false
+                    });
+                    showAlert("No balloons detected", "No balloons were detected on this page. Your existing balloons have been restored.");
                 }
 
-  
+
             }, (e) => {
                 console.log("Error", e);
-                useStore.setState({ isLoading: false });
+                useStore.setState({ isLoading: false, originalRegions: prevOriginal, drawingRegions: prevDrawing, balloonRegions: prevBalloon });
             }).catch(e => {
                 console.log("catch",e);
-                useStore.setState({ isLoading: false });
+                useStore.setState({ isLoading: false, originalRegions: prevOriginal, drawingRegions: prevDrawing, balloonRegions: prevBalloon });
             })
- 
-          // , 100000);  
+
+          // , 100000);
     }
 
     saveBalloons = (e) => {

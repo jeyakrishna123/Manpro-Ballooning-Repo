@@ -146,7 +146,8 @@ builder.Services.AddAutoMapper(Assembly.GetEntryAssembly());
             policyBuilder
                 .AllowAnyMethod()
                 .AllowAnyHeader()
-                .AllowCredentials();
+                .AllowCredentials()
+                .WithExposedHeaders("Content-Disposition");
         });
     });
 // configure jwt authentication

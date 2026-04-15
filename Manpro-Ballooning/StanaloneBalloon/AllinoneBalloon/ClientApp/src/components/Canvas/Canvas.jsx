@@ -69,8 +69,8 @@ const IconButtonWithTooltip = ({ onClick, disabled, style, alt, icon }) => {
 
 // #region FontSizeControl
 export const FontSizeControl = () => {
-    const [max] = useState(500);
-    const [min] = useState(-500);
+    const [max] = useState(50);
+    const [min] = useState(-8);
     const [disableInc, setDisableInc] = useState(false);
     const [disableDec, setDisableDec] = useState(false);
 
@@ -81,7 +81,7 @@ export const FontSizeControl = () => {
         if (e) { e.stopPropagation(); e.preventDefault(); }
         const current = parseFloat(useStore.getState().fontScale);
         const bgImgScale = useStore.getState().bgImgScale;
-        let scale = 1 + current / 100 * bgImgScale;
+        let scale = 1 + current / 10 * bgImgScale;
         if (scale < 0.1) {
             useStore.setState({ fontScale: current + 1 });
             setDisableDec(false);
@@ -103,7 +103,7 @@ export const FontSizeControl = () => {
         if (e) { e.stopPropagation(); e.preventDefault(); }
         const current = parseFloat(useStore.getState().fontScale);
         const bgImgScale = useStore.getState().bgImgScale;
-        let scale = 1 + current / 100 * bgImgScale;
+        let scale = 1 + current / 10 * bgImgScale;
         if (scale < 0.1) {
             useStore.setState({ fontScale: current - 1 });
             setDisableInc(false);

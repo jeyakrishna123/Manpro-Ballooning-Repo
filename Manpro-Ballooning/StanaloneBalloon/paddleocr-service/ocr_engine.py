@@ -232,7 +232,8 @@ MEDIUM_PIXELS = 1500 * 1500   # 2.25-9MP: smart single pass + conditional second
 SMALL_PIXELS = 800 * 800      # <0.64MP: upscale + enhanced detection
 
 # Minimum expected words for a drawing of a given size
-# If first pass returns fewer, trigger a rescue pass
+# If first pass returns fewer, trigger a rescue pass.
+# Restored conservative thresholds to prevent memory pressure from rescue pass on every image.
 MIN_WORDS_LARGE = 15
 MIN_WORDS_MEDIUM = 8
 MIN_WORDS_SMALL = 3
@@ -481,15 +482,9 @@ class PaddleOcrEngine:
             merged = self._ocr_pass(img)
             logger.info(f"LARGE ({w}x{h}): pass1={time.time()-t1:.1f}s, words={len(merged)}")
 
-            # Rescue pass if few results OR many low-confidence results
-            low_conf_count = sum(1 for m in merged if m["confidence"] < 0.5)
-            needs_rescue = len(merged) < MIN_WORDS_LARGE or (len(merged) > 0 and low_conf_count / len(merged) > 0.25)
-            if needs_rescue:
-                t2 = time.time()
-                prep = self._preprocess(img)
-                rescue = self._ocr_pass(prep, engine=self.ocr_sensitive)
-                merged = self._merge(merged, rescue)
-                logger.info(f"  rescue pass (low_conf={low_conf_count}): {time.time()-t2:.1f}s, total={len(merged)}")
+            # Rescue pass disabled for LARGE images to prevent memory crashes
+            # Loading the sensitive engine + processing twice causes Python OOM crashes
+            # on engineering drawings converted from PDF at 300 DPI.
 
         elif is_small:
             # SMALL (<0.64MP): Upscale first, then single pass with sensitive engine
@@ -520,15 +515,9 @@ class PaddleOcrEngine:
             merged = self._ocr_pass(img)
             logger.info(f"MEDIUM ({w}x{h}): pass1={time.time()-t1:.1f}s, words={len(merged)}")
 
-            # Conditional rescue: if few results or many low-confidence results
-            low_conf_count = sum(1 for m in merged if m["confidence"] < 0.5)
-            needs_rescue = len(merged) < MIN_WORDS_MEDIUM or (len(merged) > 0 and low_conf_count / len(merged) > 0.25)
-            if needs_rescue:
-                t2 = time.time()
-                prep = self._preprocess_adaptive(img)
-                rescue = self._ocr_pass(prep, engine=self.ocr_sensitive)
-                merged = self._merge(merged, rescue)
-                logger.info(f"  rescue pass (low_conf={low_conf_count}): {time.time()-t2:.1f}s, total={len(merged)}")
+            # Rescue pass disabled for MEDIUM images to prevent memory crashes
+            # Loading the sensitive engine on top of primary causes Python OOM
+            # crashes on engineering drawings.
 
         # Dark image inversion check (rare)
         gray = self._to_gray(img)
@@ -540,6 +529,9 @@ class PaddleOcrEngine:
             inv_results = self._ocr_pass(inv_rgb)
             merged = self._merge(merged, inv_results)
             logger.info(f"  dark inversion: {time.time()-t3:.1f}s, total={len(merged)}")
+
+        # Vertical pass disabled — was causing PaddleOCR instability between requests
+        # (second call after a successful first call would fail with crashed service)
 
         result = self._postprocess(merged)
         logger.info(f"TOTAL: {time.time()-t0:.1f}s, final_words={len(result)}")
