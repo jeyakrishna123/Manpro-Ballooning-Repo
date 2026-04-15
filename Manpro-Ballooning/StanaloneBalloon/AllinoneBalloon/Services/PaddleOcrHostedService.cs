@@ -2,6 +2,7 @@ using AllinoneBalloon.Common;
 using AllinoneBalloon.Models.Configuration;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.Linq;
 
 namespace AllinoneBalloon.Services
 {
@@ -30,22 +31,30 @@ namespace AllinoneBalloon.Services
 
             // Resolve the paddleocr-service path relative to the project
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            // Navigate from bin/Debug/net6.0/ to project root, then to paddleocr-service
+            var contentRoot = Directory.GetCurrentDirectory();
             var projectRoot = Path.GetFullPath(Path.Combine(baseDir, "..", "..", ".."));
             var solutionRoot = Path.GetFullPath(Path.Combine(projectRoot, "..", ".."));
-            _paddleServicePath = Path.Combine(solutionRoot, "paddleocr-service");
 
-            // Fallback: check common locations
-            if (!Directory.Exists(_paddleServicePath))
+            // Try multiple candidate locations in order of likelihood
+            string[] candidates = new[]
             {
-                _paddleServicePath = Path.Combine(projectRoot, "..", "paddleocr-service");
-            }
-            if (!Directory.Exists(_paddleServicePath))
-            {
-                // Try relative to content root
-                var contentRoot = Directory.GetCurrentDirectory();
-                _paddleServicePath = Path.Combine(contentRoot, "..", "paddleocr-service");
-            }
+                // Dev: from bin/Debug/net6.0/ → solution root → paddleocr-service
+                Path.Combine(solutionRoot, "paddleocr-service"),
+                // Dev alt: from bin/Debug/net6.0/ → project root → sibling
+                Path.Combine(projectRoot, "..", "paddleocr-service"),
+                // Production: alongside the published exe
+                Path.Combine(baseDir, "paddleocr-service"),
+                // Production: one level up from publish dir
+                Path.Combine(baseDir, "..", "paddleocr-service"),
+                // Production: from content root
+                Path.Combine(contentRoot, "paddleocr-service"),
+                Path.Combine(contentRoot, "..", "paddleocr-service"),
+            };
+
+            _paddleServicePath = candidates.FirstOrDefault(p =>
+                Directory.Exists(Path.GetFullPath(p))) ?? candidates[0];
+            _paddleServicePath = Path.GetFullPath(_paddleServicePath);
+            _logger.LogInformation("PaddleOCR service path: {Path}", _paddleServicePath);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
